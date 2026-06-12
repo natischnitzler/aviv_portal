@@ -337,6 +337,113 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
       </div>
     </div>
 
+    <!-- TALLA -->
+    <div id="sec-talla" class="section">
+      <div style="max-width:480px;margin:0 auto;padding:20px 16px 40px;">
+
+        <div style="font-family:var(--serif);font-size:28px;font-weight:300;margin-bottom:4px;">¿Cuál es tu talla?</div>
+        <div style="font-size:12px;color:var(--gray2);margin-bottom:28px;line-height:1.6;">Tres formas de encontrar la talla correcta para tu anillo.</div>
+
+        <!-- MÉTODO 1: Regla en pantalla -->
+        <div style="border:1px solid var(--gray4);margin-bottom:16px;">
+          <div style="padding:16px;border-bottom:1px solid var(--gray4);display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleMetodo(1)">
+            <div>
+              <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:3px;">Método 01</div>
+              <div style="font-size:16px;font-family:var(--serif);font-weight:300;">Mide tu anillo en pantalla</div>
+              <div style="font-size:12px;color:var(--gray2);margin-top:2px;">Coloca un anillo que te quede bien sobre la pantalla</div>
+            </div>
+            <span id="arrow-1" style="font-size:20px;color:var(--gray3);transition:transform .2s;">›</span>
+          </div>
+          <div id="metodo-1" style="display:none;padding:16px;">
+            <div style="text-align:center;margin-bottom:14px;font-size:12px;color:var(--gray2);line-height:1.6;">
+              Coloca un anillo que te quede bien sobre el círculo de abajo.<br>Ajusta el tamaño hasta que coincida con el interior del anillo.
+            </div>
+            <div style="display:flex;justify-content:center;margin-bottom:16px;position:relative;">
+              <div id="regla-circulo" style="border:3px solid var(--black);border-radius:50%;width:180px;height:180px;display:flex;align-items:center;justify-content:center;position:relative;">
+                <div id="regla-label" style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);">—</div>
+              </div>
+            </div>
+            <input type="range" id="regla-slider" min="40" max="100" value="60"
+              style="width:100%;accent-color:var(--black);margin-bottom:8px;"
+              oninput="actualizarRegla(this.value)"/>
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray3);margin-bottom:12px;">
+              <span>Más pequeño</span><span>Más grande</span>
+            </div>
+            <div id="regla-resultado" style="text-align:center;padding:12px;background:var(--gray5);font-size:13px;color:var(--gray1);"></div>
+          </div>
+        </div>
+
+        <!-- MÉTODO 2: Papel en el dedo -->
+        <div style="border:1px solid var(--gray4);margin-bottom:16px;">
+          <div style="padding:16px;border-bottom:1px solid var(--gray4);display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleMetodo(2)">
+            <div>
+              <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:3px;">Método 02</div>
+              <div style="font-size:16px;font-family:var(--serif);font-weight:300;">Mide con un papel</div>
+              <div style="font-size:12px;color:var(--gray2);margin-top:2px;">Envuelve un trozo de papel en tu dedo</div>
+            </div>
+            <span id="arrow-2" style="font-size:20px;color:var(--gray3);">›</span>
+          </div>
+          <div id="metodo-2" style="display:none;padding:16px;">
+            <div style="font-size:13px;color:var(--gray1);line-height:1.8;margin-bottom:16px;">
+              <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">
+                <span style="background:var(--black);color:var(--white);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px;">1</span>
+                <span>Corta una tira de papel de unos <strong>10 cm</strong> de largo y 1 cm de ancho.</span>
+              </div>
+              <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">
+                <span style="background:var(--black);color:var(--white);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px;">2</span>
+                <span>Envuelve el papel alrededor del dedo donde usarás el anillo.</span>
+              </div>
+              <div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">
+                <span style="background:var(--black);color:var(--white);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px;">3</span>
+                <span>Marca donde se juntan los extremos y mide esa longitud en mm.</span>
+              </div>
+              <div style="display:flex;gap:12px;align-items:flex-start;">
+                <span style="background:var(--black);color:var(--white);width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;margin-top:1px;">4</span>
+                <span>Ingresa el largo aquí:</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;">
+              <input type="number" id="papel-mm" min="40" max="80" placeholder="ej: 55"
+                style="flex:1;height:44px;border:1px solid var(--gray4);padding:0 12px;font-size:16px;font-family:var(--sans);outline:none;color:var(--black);"
+                oninput="calcularPapel(this.value)"/>
+              <span style="font-size:13px;color:var(--gray2);">mm</span>
+            </div>
+            <div id="papel-resultado" style="text-align:center;padding:12px;background:var(--gray5);font-size:13px;color:var(--gray1);"></div>
+          </div>
+        </div>
+
+        <!-- MÉTODO 3: Tabla de referencia -->
+        <div style="border:1px solid var(--gray4);margin-bottom:16px;">
+          <div style="padding:16px;border-bottom:1px solid var(--gray4);display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleMetodo(3)">
+            <div>
+              <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:3px;">Método 03</div>
+              <div style="font-size:16px;font-family:var(--serif);font-weight:300;">Tabla de referencia</div>
+              <div style="font-size:12px;color:var(--gray2);margin-top:2px;">Diámetro interior en milímetros</div>
+            </div>
+            <span id="arrow-3" style="font-size:20px;color:var(--gray3);">›</span>
+          </div>
+          <div id="metodo-3" style="display:none;">
+            <table style="width:100%;border-collapse:collapse;font-size:13px;">
+              <thead>
+                <tr style="background:var(--gray5);">
+                  <th style="padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);font-weight:400;border-bottom:1px solid var(--gray4);">Talla Aviv</th>
+                  <th style="padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);font-weight:400;border-bottom:1px solid var(--gray4);">Diámetro (mm)</th>
+                  <th style="padding:10px 16px;text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);font-weight:400;border-bottom:1px solid var(--gray4);">Circunferencia (mm)</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-tallas-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div style="font-size:11px;color:var(--gray3);text-align:center;line-height:1.6;margin-top:8px;">
+          💡 Si estás entre dos tallas, elige la más grande.<br>
+          Los anillos muy ajustados pueden incomodar con el calor.
+        </div>
+
+      </div>
+    </div>
+
     <!-- HISTORIAL -->
     <div id="sec-historial" class="section">
       <div class="hist-wrap">
@@ -365,6 +472,10 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
       <span class="nav-icon">🛒</span>
       <span>Pedido</span>
       <div class="nav-badge" id="cart-badge">0</div>
+    </button>
+    <button class="nav-item" id="nav-talla" onclick="goSection('talla')">
+      <span class="nav-icon">📏</span>
+      <span>Mi talla</span>
     </button>
     <button class="nav-item" id="nav-historial" onclick="goSection('historial')">
       <span class="nav-icon">📋</span>
@@ -792,6 +903,84 @@ async function loadHistorial(){
     histCargado=true;
   } catch(e){ document.getElementById('hist-loading').innerHTML='Error'; }
   document.getElementById('hist-loading').style.display='none';
+}
+
+// ── SECCIÓN TALLA ─────────────────────────────────────────────────
+// Tabla de tallas: diámetro en mm → talla Aviv
+var TALLAS_DATA=[
+  {talla:'11',diam:14.8,circ:46.5},
+  {talla:'12',diam:15.3,circ:48.0},
+  {talla:'13',diam:15.7,circ:49.3},
+  {talla:'14',diam:16.2,circ:50.9},
+  {talla:'15',diam:16.6,circ:52.1},
+  {talla:'16',diam:17.1,circ:53.8},
+  {talla:'17',diam:17.5,circ:54.9},
+  {talla:'18',diam:18.2,circ:57.2},
+];
+
+// Llenar tabla
+(function(){
+  var tbody=document.getElementById('tabla-tallas-body');
+  if(!tbody) return;
+  tbody.innerHTML=TALLAS_DATA.map(function(t,i){
+    var bg=i%2===0?'background:var(--white)':'background:var(--gray5)';
+    return '<tr style="'+bg+';">'
+      +'<td style="padding:11px 16px;border-bottom:1px solid var(--gray5);font-weight:600;font-size:14px;">'+t.talla+'</td>'
+      +'<td style="padding:11px 16px;border-bottom:1px solid var(--gray5);color:var(--gray1);">'+t.diam+' mm</td>'
+      +'<td style="padding:11px 16px;border-bottom:1px solid var(--gray5);color:var(--gray1);">'+t.circ+' mm</td>'
+      +'</tr>';
+  }).join('');
+})();
+
+function toggleMetodo(n){
+  var el=document.getElementById('metodo-'+n);
+  var arrow=document.getElementById('arrow-'+n);
+  var open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  arrow.textContent=open?'›':'‹';
+}
+
+function mmToTalla(diam){
+  var best=null, bestDiff=999;
+  TALLAS_DATA.forEach(function(t){
+    var diff=Math.abs(t.diam-diam);
+    if(diff<bestDiff){ bestDiff=diff; best=t; }
+  });
+  return best;
+}
+
+function actualizarRegla(val){
+  // val = píxeles del diámetro del círculo en el slider (40-100 en mm visuales)
+  // Calibramos asumiendo 96dpi → 1mm = 3.78px
+  var pxPerMm = 96/25.4;
+  var diamMm = parseFloat(val) * (pxPerMm/3.78); // ajuste visual
+  var circulo=document.getElementById('regla-circulo');
+  var label=document.getElementById('regla-label');
+  var res=document.getElementById('regla-resultado');
+  circulo.style.width=val+'px';
+  circulo.style.height=val+'px';
+  // Calcular diámetro real en mm según DPI de pantalla
+  var dpiEl=document.createElement('div');
+  dpiEl.style.cssText='width:1in;position:absolute;left:-9999px;';
+  document.body.appendChild(dpiEl);
+  var dpi=dpiEl.offsetWidth; document.body.removeChild(dpiEl);
+  var realMm=(parseFloat(val)/(dpi/25.4)).toFixed(1);
+  var talla=mmToTalla(parseFloat(realMm));
+  label.textContent=realMm+' mm';
+  res.innerHTML=talla
+    ?'<strong style="font-family:var(--serif);font-size:20px;">Talla '+talla.talla+'</strong><br><span style="font-size:11px;color:var(--gray3);">Diámetro interior: '+talla.diam+' mm</span>'
+    :'Ajusta el círculo hasta que coincida con tu anillo';
+}
+
+function calcularPapel(val){
+  var mm=parseFloat(val);
+  var res=document.getElementById('papel-resultado');
+  if(!mm||mm<40||mm>80){ res.innerHTML='<span style="color:var(--gray3);">Ingresa la medida en mm</span>'; return; }
+  var diamMm=(mm/Math.PI).toFixed(1);
+  var talla=mmToTalla(parseFloat(diamMm));
+  res.innerHTML=talla
+    ?'<strong style="font-family:var(--serif);font-size:20px;">Talla '+talla.talla+'</strong><br><span style="font-size:11px;color:var(--gray3);">Circunferencia '+mm+' mm · Diámetro ~'+diamMm+' mm</span>'
+    :'<span style="color:var(--red);">Medida fuera de rango</span>';
 }
 
 // Swipe para navegar entre productos en ficha
