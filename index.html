@@ -416,8 +416,7 @@ table.grid-t{width:100%;border-collapse:collapse;}
 
 <!-- MODAL FICHA PRODUCTO -->
 <div id="modal-foto" onclick="if(event.target===this)closeFoto()">
-  <!-- Flecha izquierda -->
-  <button onclick="navFoto(-1)" id="foto-prev" style="position:fixed;left:12px;top:50%;transform:translateY(-50%);background:var(--white);border:1px solid var(--gray4);width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;color:var(--black);">‹</button>
+
   <div class="foto-inner">
     <div class="foto-header">
       <div style="display:flex;flex-direction:column;flex:1;padding-right:16px;">
@@ -429,13 +428,24 @@ table.grid-t{width:100%;border-collapse:collapse;}
     <div class="foto-img" id="foto-img"></div>
     <div class="foto-grid" id="foto-grid"></div>
     <div class="foto-price-box" id="foto-price-box"></div>
-    <div style="padding:0 24px 24px;display:flex;gap:10px;">
-      <button onclick="closeFoto()" style="flex:1;padding:13px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);background:var(--white);color:var(--black);border:1px solid var(--gray4);transition:all .2s;">Cerrar</button>
-      <button onclick="agregarAlPedido()" style="flex:2;padding:13px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);background:var(--black);color:var(--white);border:1px solid var(--black);transition:opacity .2s;">Agregar al pedido</button>
+    <!-- Barra de acciones fija en el fondo del modal -->
+    <div style="position:sticky;bottom:0;background:var(--white);border-top:1px solid var(--gray4);display:flex;align-items:center;padding:14px 20px;gap:12px;">
+      <!-- Flecha izquierda -->
+      <button onclick="navFoto(-1)" id="foto-prev-inner" style="width:44px;height:44px;border:1px solid var(--gray4);background:var(--white);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--black);flex-shrink:0;">‹</button>
+      <!-- Contador -->
+      <div id="foto-counter-inner" style="font-size:11px;color:var(--gray3);letter-spacing:1px;min-width:40px;text-align:center;"></div>
+      <!-- Flecha derecha -->
+      <button onclick="navFoto(1)" id="foto-next-inner" style="width:44px;height:44px;border:1px solid var(--gray4);background:var(--white);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--black);flex-shrink:0;">›</button>
+      <!-- Spacer -->
+      <div style="flex:1;"></div>
+      <!-- Botón carrito -->
+      <button onclick="agregarAlPedido()" style="height:44px;padding:0 24px;background:var(--black);color:var(--white);border:none;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);display:flex;align-items:center;gap:10px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        Agregar al pedido
+      </button>
     </div>
   </div>
-  <!-- Flecha derecha -->
-  <button onclick="navFoto(1)" id="foto-next" style="position:fixed;right:12px;top:50%;transform:translateY(-50%);background:var(--white);border:1px solid var(--gray4);width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;color:var(--black);">›</button>
+
 </div>
 
 
@@ -743,12 +753,11 @@ function openFoto(id, list){
     +'<div class="foto-price-val">'+fmt(ps)+'</div>';
 
   // Contador y flechas
-  var counter=document.getElementById('foto-counter');
-  if(counter) counter.textContent=_fotoList.length>1?(_fotoIdx+1)+' / '+_fotoList.length:'';
-  var prev=document.getElementById('foto-prev');
-  var next=document.getElementById('foto-next');
-  if(prev) prev.style.opacity=_fotoIdx>0?'1':'0.2';
-  if(next) next.style.opacity=_fotoIdx<_fotoList.length-1?'1':'0.2';
+  var txt=_fotoList.length>1?(_fotoIdx+1)+' / '+_fotoList.length:'';
+  var isFirst=_fotoIdx===0, isLast=_fotoIdx>=_fotoList.length-1;
+  ['foto-counter','foto-counter-inner'].forEach(function(id){ var el=document.getElementById(id); if(el) el.textContent=txt; });
+  ['foto-prev','foto-prev-inner'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.opacity=isFirst?'0.25':'1'; });
+  ['foto-next','foto-next-inner'].forEach(function(id){ var el=document.getElementById(id); if(el) el.style.opacity=isLast?'0.25':'1'; });
   document.getElementById('modal-foto').classList.add('open');
 }
 function closeFoto(){ document.getElementById('modal-foto').classList.remove('open'); }
