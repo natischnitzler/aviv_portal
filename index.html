@@ -401,6 +401,7 @@ let gridRows=[], _acMatches={};
 let arStream=null, arFacing='environment', arDragging=false, arDragOffX=0, arDragOffY=0;
 
 function authHeaders(){ return {'x-client-code':clientCode}; }
+function cleanVal(v){ if(!v) return ''; var p=v.split(','); return p.length>1?p.slice(1).join(',').trim():v.trim(); }
 
 // ── AUTH ──────────────────────────────────────────────────────────
 async function doLogin(){
@@ -497,8 +498,8 @@ function renderBiblioteca(){
       <td class="mono">${esc(p.sku)}</td>
       <td style="font-size:12px;">${esc(p.nombre)}</td>
       <td><span class="badge-cat ${cc}">${esc(p.categoria)}</span></td>
-      <td style="font-size:12px;">${esc(p.metal)}</td>
-      <td style="font-size:12px;">${esc(p.piedra)}</td>
+      <td style="font-size:12px;">${esc(cleanVal(p.metal))}</td>
+      <td style="font-size:12px;">${esc(cleanVal(p.piedra))}</td>
       <td class="mono" style="text-align:center;">${esc(p.medida)}</td>
       <td class="mono">${fmt(p.precio)}</td>
       <td style="font-size:12px;font-weight:600;${stc}">${p.stock>0?p.stock:'Sin stk'}</td>
@@ -557,7 +558,7 @@ function renderVitrina(){
     const stk=s?s.stock:p.stock;
     const cc=(p.categoria||'').startsWith('Oro')?'cat-oro':'cat-plata';
     const stBadge=stk>0?`<span class="vit-stock-badge vit-badge-ok">${stk} uds</span>`:`<span class="vit-stock-badge vit-badge-no">Sin stock</span>`;
-    const meta=[p.metal,p.piedra,p.medida?'T:'+p.medida:''].filter(Boolean).join(' · ');
+    const meta=[cleanVal(p.metal),cleanVal(p.piedra),p.medida?'T:'+p.medida:''].filter(Boolean).join(' · ');
     return `<div class="vit-card" onclick="openFoto('${esc(p.sku)}')">
       <div class="vit-img-wrap">
         ${p.imagen?`<img class="vit-img" src="/api/imagen/${p.id}?c=${clientCode}" onerror="this.style.display='none'" loading="lazy" alt="">`:`<div class="vit-img-placeholder">💍</div>`}
@@ -585,18 +586,42 @@ function openFoto(sku){
   const mult=clientData.multiplicador||3;
   const ps=s?s.precioSugerido:Math.round(p.precio*mult);
   const stk=s?s.stock:p.stock;
+  // Limpiar metal y piedra (Odoo devuelve "10,Oro Amarillo" → "Oro Amarillo")
+  function cleanOdooVal(v){ if(!v) return ''; var parts=v.split(','); return parts.length>1?parts.slice(1).join(',').trim():v.trim(); }
+
+  // Buscar todas las medidas del mismo template (mismo nombre base)
+  var tmplBase = p.nombre.replace(/\s*-\*\*\d+$/,'').trim();
+  var todasMedidas = [];
+  for(var k=0;k<productos.length;k++){
+    var px=productos[k];
+    if(px.medida && px.nombre.replace(/\s*-\*\*\d+$/,'').trim()===tmplBase){
+      var m=px.medida.trim();
+      if(m && todasMedidas.indexOf(m)===-1) todasMedidas.push(m);
+    }
+  }
+  todasMedidas.sort(function(a,b){ return parseFloat(a)-parseFloat(b); });
+
   document.getElementById('foto-title').textContent=p.nombre;
   document.getElementById('foto-img-wrap').innerHTML=p.imagen
     ?`<img src="/api/imagen/${p.id}?c=${clientCode}" style="max-width:100%;max-height:400px;object-fit:contain;padding:20px;" onerror="this.outerHTML='<div style=font-size:80px;padding:50px;text-align:center>💍</div>'" alt="${esc(p.nombre)}">`
     :`<div style="font-size:80px;padding:50px;text-align:center;">💍</div>`;
   const stColor=stk>0?'var(--green)':'var(--red)';
+  const metalClean = cleanOdooVal(p.metal);
+  const piedraClean = cleanOdooVal(p.piedra);
+  const medidasHtml = todasMedidas.length
+    ? todasMedidas.map(function(m){ return `<span style="display:inline-block;padding:3px 10px;background:var(--brand-light);color:var(--brand-dark);border-radius:20px;font-size:12px;font-weight:600;margin:2px;">${m}</span>`; }).join('')
+    : `<span style="color:var(--muted);">—</span>`;
+  const descHtml = p.descripcion
+    ? `<div class="foto-row" style="grid-column:1/-1;"><div class="foto-lbl">Descripción</div><div class="foto-val" style="font-size:13px;line-height:1.5;color:var(--muted);">${esc(p.descripcion)}</div></div>`
+    : '';
   document.getElementById('foto-body').innerHTML=`
     <div class="foto-row"><div class="foto-lbl">SKU</div><div class="foto-val mono">${esc(p.sku)}</div></div>
     <div class="foto-row"><div class="foto-lbl">Categoría</div><div class="foto-val">${esc(p.categoria)}</div></div>
-    <div class="foto-row"><div class="foto-lbl">Metal</div><div class="foto-val">${esc(p.metal)||'—'}</div></div>
-    <div class="foto-row"><div class="foto-lbl">Piedra</div><div class="foto-val">${esc(p.piedra)||'—'}</div></div>
-    <div class="foto-row"><div class="foto-lbl">Medida</div><div class="foto-val">${esc(p.medida)||'—'}</div></div>
-    <div class="foto-row"><div class="foto-lbl">Stock</div><div class="foto-val" style="color:${stColor};font-weight:700;">${stk>0?stk+' uds':'Sin stock'}</div></div>
+    <div class="foto-row"><div class="foto-lbl">Metal</div><div class="foto-val">${esc(metalClean)||'—'}</div></div>
+    <div class="foto-row"><div class="foto-lbl">Piedra</div><div class="foto-val">${esc(piedraClean)||'—'}</div></div>
+    <div class="foto-row" style="grid-column:1/-1;"><div class="foto-lbl">Medidas disponibles</div><div style="margin-top:4px;">${medidasHtml}</div></div>
+    <div class="foto-row"><div class="foto-lbl">Stock esta variante</div><div class="foto-val" style="color:${stColor};font-weight:700;">${stk>0?stk+' uds':'Sin stock'}</div></div>
+    ${descHtml}
     <div class="foto-price-box">
       <div class="foto-price-lbl">Precio sugerido al público</div>
       <div class="foto-price-val">${fmt(ps)}</div>

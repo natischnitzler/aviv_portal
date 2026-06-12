@@ -275,20 +275,39 @@ module.exports = app;
 // ── IMAGEN INDIVIDUAL ─────────────────────────────────────────────
 app.get('/api/imagen/:id', async (req,res)=>{
   try {
-    // Acepta header x-client-code O query param ?c= (para img tags HTML)
     const code=(req.headers['x-client-code']||req.query.c||'').toUpperCase();
-    if(!getCliente(code)) return res.status(401).json({error:'No autorizado'});
+    if(!getCliente(code)) return res.status(401).send('No autorizado');
+
     const id=parseInt(req.params.id);
-    if(!id) return res.status(400).json({error:'ID inválido'});
+    if(!id) return res.status(400).send('ID invalido');
 
-    // Buscar en caché primero
-    const prods=await fetchProductos();
-    const prod=prods.find(p=>p.id===id);
-    if(!prod?.imagen128) return res.status(404).json({error:'Sin imagen'});
+    // Intentar caché primero, si no traer directo de Odoo
+    let img128 = null;
+    const cached = cacheGet('productos');
+    if(cached) {
+      const prod = cached.find(p=>p.id===id);
+      img128 = prod ? prod.imagen128 : null;
+    }
 
-    const buf=Buffer.from(prod.imagen128,'base64');
+    // Si no está en caché, traer solo esta imagen de Odoo
+    if(!img128) {
+      const prods = await xmlrpcCall('product.product','read',[[id],['image_128']]);
+      img128 = prods && prods[0] ? prods[0].image_128 : null;
+    }
+
+    if(!img128) {
+      // Devolver imagen placeholder transparente 1x1
+      const px = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==','base64');
+      res.setHeader('Content-Type','image/png');
+      return res.send(px);
+    }
+
+    const buf=Buffer.from(img128,'base64');
     res.setHeader('Content-Type','image/png');
-    res.setHeader('Cache-Control','public, max-age=3600');
+    res.setHeader('Cache-Control','public, max-age=7200');
     res.send(buf);
-  } catch(e){ res.status(500).json({error:e.message}); }
+  } catch(e){
+    console.error('❌ /api/imagen/'+req.params.id, e.message);
+    res.status(500).send(e.message);
+  }
 });
