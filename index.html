@@ -15,7 +15,7 @@
   --black:#111;--gray1:#444;--gray2:#888;--gray3:#bbb;--gray4:#e8e8e8;--gray5:#f7f7f5;
   --white:#fff;--gold:#b8960c;
 }
-body{font-family:var(--sans);background:var(--white);color:var(--black);min-height:100vh;font-size:13px;}
+body{font-family:var(--sans);background:var(--white);color:var(--black);min-height:100vh;font-size:14px;}
 
 /* ── LOGIN ── */
 #login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--white);}
@@ -78,12 +78,12 @@ body{font-family:var(--sans);background:var(--white);color:var(--black);min-heig
 .vit-img-placeholder{font-size:36px;color:var(--gray3);}
 .vit-body{padding:14px 16px 18px;}
 .vit-sku{font-size:10px;color:var(--gray3);font-family:var(--mono);margin-bottom:4px;letter-spacing:.5px;}
-.vit-name{font-size:13px;color:var(--black);line-height:1.4;margin-bottom:8px;font-weight:400;}
+.vit-name{font-size:14px;color:var(--black);line-height:1.4;margin-bottom:8px;font-weight:400;}
 .vit-tallas{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
 .talla-chip{font-size:10px;padding:2px 8px;border-radius:20px;border:1px solid var(--gray4);color:var(--gray1);}
 .talla-chip.sin{color:var(--gray3);text-decoration:line-through;border-color:var(--gray5);}
 .vit-meta{font-size:10px;color:var(--gray2);margin-bottom:6px;letter-spacing:.3px;}
-.vit-price{font-family:var(--serif);font-size:18px;font-weight:300;color:var(--black);}
+.vit-price{font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);}
 .vit-price-label{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray3);margin-bottom:2px;}
 
 /* TABLA BIBLIOTECA */
@@ -167,7 +167,7 @@ table.grid-t{width:100%;border-collapse:collapse;}
 .foto-price-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--gray2);margin-bottom:6px;}
 .foto-price-val{font-family:var(--serif);font-size:32px;font-weight:300;color:var(--black);}
 .foto-actions{padding:0 24px 24px;display:flex;gap:10px;}
-.foto-btn{flex:1;padding:12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);transition:all .2s;}
+.foto-btn{flex:1;padding:12px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);transition:all .2s;border:none;}
 .foto-btn-cam{background:var(--black);color:var(--white);border:1px solid var(--black);}
 .foto-btn-cam:hover{opacity:.8;}
 
@@ -234,15 +234,71 @@ table.grid-t{width:100%;border-collapse:collapse;}
     <div class="header-right"><button class="btn-salir" onclick="doLogout()">Salir</button></div>
   </div>
   <div class="nav">
-    <button class="nav-tab active" onclick="showTab('biblioteca',this)">Biblioteca</button>
+    <button class="nav-tab active" onclick="showTab('home',this)">Inicio</button>
+    <button class="nav-tab" onclick="showTab('biblioteca',this)">Biblioteca</button>
     <button class="nav-tab" onclick="showTab('vitrina',this)">Vitrina</button>
     <button class="nav-tab" onclick="showTab('pedido',this)">Pedido</button>
     <button class="nav-tab" onclick="showTab('historial',this)">Historial</button>
   </div>
   <div class="main">
 
+    <!-- HOME -->
+    <div id="sec-home" class="section active">
+      <div style="max-width:720px;margin:0 auto;padding:48px 0 60px;">
+
+        <!-- Bienvenida -->
+        <div style="margin-bottom:48px;">
+          <div style="font-family:var(--serif);font-size:48px;font-weight:300;letter-spacing:2px;color:var(--black);margin-bottom:8px;">Bienvenida</div>
+          <div id="home-cliente-nombre" style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--gray2);margin-bottom:32px;"></div>
+          <div style="width:40px;height:1px;background:var(--gray4);margin-bottom:32px;"></div>
+          <div style="font-size:15px;color:var(--gray1);line-height:1.8;max-width:560px;">
+            Este es tu portal exclusivo de ventas Aviv. Aquí encontrarás todo lo que necesitas para presentar y vender nuestra colección de joyas de oro y plata a tus clientes.
+          </div>
+        </div>
+
+        <!-- Tarjetas de módulos -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray4);margin-bottom:48px;">
+
+          <div style="background:var(--white);padding:28px 28px 32px;cursor:pointer;" onclick="goTab(1)">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray3);margin-bottom:12px;">01</div>
+            <div style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);margin-bottom:10px;">Biblioteca</div>
+            <div style="font-size:13px;color:var(--gray2);line-height:1.6;">Ficha completa de cada producto con descripción, metal, piedra y medidas. Descarga Excel o fotos para tener siempre el catálogo a mano.</div>
+          </div>
+
+          <div style="background:var(--white);padding:28px 28px 32px;cursor:pointer;" onclick="goTab(2)">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray3);margin-bottom:12px;">02</div>
+            <div style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);margin-bottom:10px;">Vitrina</div>
+            <div style="font-size:13px;color:var(--gray2);line-height:1.6;">Vista visual del catálogo con fotos grandes y precio sugerido. Ideal para mostrar a tu cliente directamente desde el teléfono o pantalla.</div>
+          </div>
+
+          <div style="background:var(--white);padding:28px 28px 32px;cursor:pointer;" onclick="goTab(3)">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray3);margin-bottom:12px;">03</div>
+            <div style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);margin-bottom:10px;">Pedido</div>
+            <div style="font-size:13px;color:var(--gray2);line-height:1.6;">Ingresa tu pedido directamente. Busca por SKU, agrega cantidades y envía en segundos. El pedido entra automáticamente a nuestro sistema.</div>
+          </div>
+
+          <div style="background:var(--white);padding:28px 28px 32px;cursor:pointer;" onclick="goTab(4)">
+            <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gray3);margin-bottom:12px;">04</div>
+            <div style="font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);margin-bottom:10px;">Historial</div>
+            <div style="font-size:13px;color:var(--gray2);line-height:1.6;">Revisa el estado de todos tus pedidos anteriores, fechas de entrega y montos.</div>
+          </div>
+
+        </div>
+
+        <!-- Mensaje Aviv -->
+        <div style="border-top:1px solid var(--gray4);padding-top:32px;display:flex;align-items:flex-start;gap:32px;">
+          <div style="font-family:var(--serif);font-size:28px;font-weight:300;letter-spacing:4px;color:var(--black);white-space:nowrap;">AVIV</div>
+          <div style="font-size:13px;color:var(--gray2);line-height:1.8;">
+            Joyas de oro y plata al por mayor. Trabajamos contigo para hacer crecer tu negocio con productos de calidad y servicio personalizado.<br>
+            <span style="font-size:12px;color:var(--gray3);">¿Consultas? Escríbenos por WhatsApp o al correo de tu ejecutivo de cuenta.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
     <!-- BIBLIOTECA -->
-    <div id="sec-biblioteca" class="section active">
+    <div id="sec-biblioteca" class="section">
       <div class="page-title">Biblioteca</div>
       <div class="page-sub">Consulta fichas de productos · descarga Excel o fotos</div>
       <div class="toolbar">
@@ -368,38 +424,10 @@ table.grid-t{width:100%;border-collapse:collapse;}
     <div class="foto-img" id="foto-img"></div>
     <div class="foto-grid" id="foto-grid"></div>
     <div class="foto-price-box" id="foto-price-box"></div>
-    <div class="foto-actions">
-      <button class="foto-btn foto-btn-cam" onclick="openAR()">Probar con cámara</button>
-    </div>
+
   </div>
 </div>
 
-<!-- PROBADOR AR -->
-<div id="modal-ar">
-  <div class="ar-header">
-    <div class="ar-name" id="ar-name"></div>
-    <button class="ar-x" onclick="closeAR()">×</button>
-  </div>
-  <video id="ar-video" autoplay playsinline muted></video>
-  <div class="ar-ring-overlay" id="ar-ring" style="width:120px;height:120px;left:50%;top:50%;margin-left:-60px;margin-top:-60px;">
-    <img id="ar-ring-img" src="" alt=""/>
-  </div>
-  <div class="ar-no-img" id="ar-no-img" style="display:none;"><span>Sin imagen disponible</span></div>
-  <div class="ar-controls">
-    <div class="ar-hint">Arrastra el anillo para posicionarlo</div>
-    <div class="ar-row">
-      <span class="ar-lbl">Tamaño</span>
-      <input type="range" class="ar-slider" id="ar-size" min="60" max="300" value="120" oninput="resizeRing(this.value)"/>
-    </div>
-    <div class="ar-row">
-      <span class="ar-lbl">Opacidad</span>
-      <input type="range" class="ar-slider" id="ar-opacity" min="30" max="100" value="90" oninput="setOpacity(this.value)"/>
-    </div>
-    <div class="ar-btns">
-      <button class="ar-btn" onclick="flipCamera()">Cambiar cámara</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL CONFIRMAR PEDIDO -->
 <div class="modal-overlay" id="modal-confirm">
@@ -419,7 +447,7 @@ table.grid-t{width:100%;border-collapse:collapse;}
 const BACKEND='', GRID_SIZE=20;
 let clientCode='', clientData={}, productos=[], stockMap={};
 let gridRows=[], _acMatches={};
-let arStream=null, arFacing='environment', arDragging=false, arDragOffX=0, arDragOffY=0;
+
 let _fotoActual=null;
 let _bibCat='', _vitCat='';
 
@@ -444,6 +472,8 @@ async function doLogin(){
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app').style.display='block';
     document.getElementById('header-client').textContent=clientData.name;
+    var hn=document.getElementById('home-cliente-nombre');
+    if(hn) hn.textContent=clientData.name;
     initSucursales(); loadBiblioteca(); loadStock();
   } catch(e){ showLoginError('Error de conexión'); }
   btn.disabled=false; btn.textContent='Ingresar';
@@ -466,6 +496,10 @@ function showTab(tab,btn){
   document.getElementById('sec-'+tab).classList.add('active');
   btn.classList.add('active');
   if(tab==='historial') loadHistorial();
+}
+function goTab(n){
+  var tabs=document.querySelectorAll('.nav-tab');
+  if(tabs[n]) tabs[n].click();
 }
 function initSucursales(){
   const sel=document.getElementById('ped-sucursal');
@@ -581,10 +615,19 @@ async function loadStock(){
   } catch(e){ console.warn('stock',e.message); initGrid(); }
 }
 
+function cleanNombre(n){
+  // Quita sufijos de variante tipo -**2, (**2), (T:14), etc.
+  return String(n||'')
+    .replace(/\s*-\s*\*\*\d+\s*$/,'')
+    .replace(/\s*\(\*\*\d+\)\s*$/,'')
+    .replace(/\s*\(T:\s*\d+\)\s*$/,'')
+    .replace(/\s*-\s*T\s*\d+\s*$/,'')
+    .trim();
+}
 function groupByTemplate(list){
   var groups={}, order=[];
   list.forEach(function(p){
-    var base=p.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim();
+    var base=cleanNombre(p.nombre);
     var key=p.categoria+'||'+cleanVal(p.metal)+'||'+cleanVal(p.piedra)+'||'+base;
     if(!groups[key]){ groups[key]={rep:p,tallas:[],stockTotal:0}; order.push(key); }
     var s=stockMap[(p.sku||'').toUpperCase()];
@@ -625,7 +668,7 @@ function renderVitrina(){
       +'<div class="vit-img-wrap">'+imgHtml+'</div>'
       +'<div class="vit-body">'
       +'<div class="vit-sku">'+esc(p.sku.split('-').slice(0,2).join('-'))+'</div>'
-      +'<div class="vit-name">'+esc(p.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim())+'</div>'
+      +'<div class="vit-name">'+esc(cleanNombre(p.nombre))+'</div>'
       +(meta?'<div class="vit-meta">'+esc(meta)+'</div>':'')
       +(tallasHtml?'<div class="vit-tallas">'+tallasHtml+'</div>':'')
       +'<div class="vit-price-label">Precio sugerido</div>'
@@ -648,7 +691,7 @@ function openFoto(id){
   function cleanV(v){ return cleanVal(v)||'—'; }
 
   // Todas las medidas del mismo template
-  var base=p.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim();
+  var base=cleanNombre(p.nombre);
   var tallas=[];
   productos.forEach(function(px){
     if(px.medida && px.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim()===base){
@@ -658,7 +701,7 @@ function openFoto(id){
   });
   tallas.sort(function(a,b){ return parseFloat(a)-parseFloat(b); });
 
-  document.getElementById('foto-titulo').textContent=p.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim();
+  document.getElementById('foto-titulo').textContent=cleanNombre(p.nombre);
   document.getElementById('foto-img').innerHTML=p.imagen
     ?'<img src="/api/imagen/'+p.id+'?c='+clientCode+'" onerror="this.parentElement.innerHTML=\'◇\'" alt="'+esc(p.nombre)+'" style="max-width:100%;max-height:360px;object-fit:contain;padding:24px;">'
     :'<div style="font-size:48px;color:var(--gray4);padding:48px;">◇</div>';
@@ -691,7 +734,7 @@ async function openAR(){
   closeFoto();
   var modal=document.getElementById('modal-ar');
   modal.classList.add('open');
-  document.getElementById('ar-name').textContent=_fotoActual?_fotoActual.nombre.replace(/-\s*\*\*\d+\s*$/,'').trim():'';
+  document.getElementById('ar-name').textContent=_fotoActual?cleanNombre(_fotoActual.nombre):'';
   var ring=document.getElementById('ar-ring');
   var ringImg=document.getElementById('ar-ring-img');
   var noImg=document.getElementById('ar-no-img');
@@ -741,6 +784,40 @@ function moveRing(x,y){
   var nx=Math.max(0,Math.min(window.innerWidth-w,x-w/2));
   var ny=Math.max(0,Math.min(window.innerHeight-w,y-w/2));
   el.style.left=nx+'px'; el.style.top=ny+'px'; el.style.margin='0';
+}
+
+// ── AGREGAR AL PEDIDO DESDE VITRINA ──────────────────────────────
+function agregarAlPedido(){
+  if(!_fotoActual) return;
+  var sku=_fotoActual.sku;
+  var s=stockMap[sku.toUpperCase()];
+  if(!s||s.stock<=0){ showToast('Sin stock disponible',true); return; }
+
+  // Ir al tab de pedido
+  var tabs=document.querySelectorAll('.nav-tab');
+  tabs.forEach(function(t,i){ if(t.textContent.trim()==='Pedido') t.click(); });
+
+  // Buscar primera fila vacía o agregar una nueva
+  var rowIdx=-1;
+  for(var i=0;i<gridRows.length;i++){
+    if(!gridRows[i].raw){ rowIdx=i; break; }
+  }
+  if(rowIdx===-1){ addRows(5); rowIdx=gridRows.length-5; }
+
+  // Cargar el SKU en esa fila
+  gridRows[rowIdx].raw=sku;
+  gridRows[rowIdx].prod={sku:sku,des:s.des,stock:s.stock,precio:s.precio};
+  gridRows[rowIdx].qty=1;
+  renderGrid();
+
+  // Scroll a la fila
+  setTimeout(function(){
+    var rows=document.querySelectorAll('#grid-body tr');
+    if(rows[rowIdx]) rows[rowIdx].scrollIntoView({behavior:'smooth',block:'center'});
+  },200);
+
+  closeFoto();
+  showToast(''+sku+' agregado al pedido');
 }
 
 // ── GRID PEDIDO ───────────────────────────────────────────────────
