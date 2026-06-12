@@ -290,7 +290,7 @@ table.grid-t{width:100%;border-collapse:collapse;}
           <div style="font-family:var(--serif);font-size:28px;font-weight:300;letter-spacing:4px;color:var(--black);white-space:nowrap;">AVIV</div>
           <div style="font-size:13px;color:var(--gray2);line-height:1.8;">
             Joyas de oro y plata al por mayor. Trabajamos contigo para hacer crecer tu negocio con productos de calidad y servicio personalizado.<br>
-            <span style="font-size:12px;color:var(--gray3);">¿Consultas? Escríbenos por WhatsApp o al correo de tu ejecutivo de cuenta.</span>
+            <span style="font-size:12px;color:var(--gray3);">¿Consultas o dudas? Escríbenos por WhatsApp al <a href="https://wa.me/56958172668" target="_blank" style="color:var(--black);text-decoration:none;border-bottom:1px solid var(--gray4);">+56 9 5817 2668</a> — estamos para ayudarte.</span>
           </div>
         </div>
 
@@ -416,16 +416,26 @@ table.grid-t{width:100%;border-collapse:collapse;}
 
 <!-- MODAL FICHA PRODUCTO -->
 <div id="modal-foto" onclick="if(event.target===this)closeFoto()">
+  <!-- Flecha izquierda -->
+  <button onclick="navFoto(-1)" id="foto-prev" style="position:fixed;left:12px;top:50%;transform:translateY(-50%);background:var(--white);border:1px solid var(--gray4);width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;color:var(--black);">‹</button>
   <div class="foto-inner">
     <div class="foto-header">
-      <div class="foto-titulo" id="foto-titulo"></div>
+      <div style="display:flex;flex-direction:column;flex:1;padding-right:16px;">
+        <div id="foto-counter" style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:6px;"></div>
+        <div class="foto-titulo" id="foto-titulo"></div>
+      </div>
       <button class="foto-close" onclick="closeFoto()">×</button>
     </div>
     <div class="foto-img" id="foto-img"></div>
     <div class="foto-grid" id="foto-grid"></div>
     <div class="foto-price-box" id="foto-price-box"></div>
-
+    <div style="padding:0 24px 24px;display:flex;gap:10px;">
+      <button onclick="closeFoto()" style="flex:1;padding:13px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);background:var(--white);color:var(--black);border:1px solid var(--gray4);transition:all .2s;">Cerrar</button>
+      <button onclick="agregarAlPedido()" style="flex:2;padding:13px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);background:var(--black);color:var(--white);border:1px solid var(--black);transition:opacity .2s;">Agregar al pedido</button>
+    </div>
   </div>
+  <!-- Flecha derecha -->
+  <button onclick="navFoto(1)" id="foto-next" style="position:fixed;right:12px;top:50%;transform:translateY(-50%);background:var(--white);border:1px solid var(--gray4);width:40px;height:40px;font-size:20px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;color:var(--black);">›</button>
 </div>
 
 
@@ -448,7 +458,7 @@ const BACKEND='', GRID_SIZE=20;
 let clientCode='', clientData={}, productos=[], stockMap={};
 let gridRows=[], _acMatches={};
 
-let _fotoActual=null;
+let _fotoActual=null, _fotoIdx=0, _fotoList=[];
 let _bibCat='', _vitCat='';
 
 function authHeaders(){ return {'x-client-code':clientCode}; }
@@ -652,6 +662,8 @@ function renderVitrina(){
   document.getElementById('vit-count').textContent=filtered.length+' productos';
   if(!filtered.length){ grid.innerHTML='<div style="padding:40px;font-size:11px;color:var(--gray3);letter-spacing:.5px;background:var(--white);">Sin productos</div>'; return; }
   var mult=clientData.multiplicador||3;
+  // Lista de IDs para navegación lateral
+  var _vitListIds=filtered.map(function(g){ return g.rep.id; });
   grid.innerHTML=filtered.map(function(g){
     var p=g.rep;
     var s=stockMap[(p.sku||'').toUpperCase()];
@@ -664,7 +676,7 @@ function renderVitrina(){
     var imgHtml=p.imagen
       ?'<img class="vit-img" src="/api/imagen/'+p.id+'?c='+clientCode+'" onerror="this.style.display=\'none\'" loading="lazy" alt="">'
       :'<div class="vit-img-placeholder">◇</div>';
-    return '<div class="vit-card'+noStock+'" onclick="openFoto('+p.id+')">'
+    return '<div class="vit-card'+noStock+'" onclick="openFoto('+p.id+',_vitListIds)">'
       +'<div class="vit-img-wrap">'+imgHtml+'</div>'
       +'<div class="vit-body">'
       +'<div class="vit-sku">'+esc(p.sku.split('-').slice(0,2).join('-'))+'</div>'
@@ -678,7 +690,12 @@ function renderVitrina(){
 }
 
 // ── MODAL FICHA ──────────────────────────────────────────────────
-function openFoto(id){
+function openFoto(id, list){
+  // list = array de IDs del grupo actual para navegar
+  if(list) _fotoList=list;
+  if(!_fotoList.length) _fotoList=[id];
+  _fotoIdx=_fotoList.indexOf(id);
+  if(_fotoIdx===-1){ _fotoList=[id]; _fotoIdx=0; }
   var p=null;
   for(var k=0;k<productos.length;k++){ if(productos[k].id===id){ p=productos[k]; break; } }
   if(!p) return;
@@ -725,6 +742,13 @@ function openFoto(id){
     '<div class="foto-price-lbl">Precio sugerido al público</div>'
     +'<div class="foto-price-val">'+fmt(ps)+'</div>';
 
+  // Contador y flechas
+  var counter=document.getElementById('foto-counter');
+  if(counter) counter.textContent=_fotoList.length>1?(_fotoIdx+1)+' / '+_fotoList.length:'';
+  var prev=document.getElementById('foto-prev');
+  var next=document.getElementById('foto-next');
+  if(prev) prev.style.opacity=_fotoIdx>0?'1':'0.2';
+  if(next) next.style.opacity=_fotoIdx<_fotoList.length-1?'1':'0.2';
   document.getElementById('modal-foto').classList.add('open');
 }
 function closeFoto(){ document.getElementById('modal-foto').classList.remove('open'); }
@@ -784,6 +808,13 @@ function moveRing(x,y){
   var nx=Math.max(0,Math.min(window.innerWidth-w,x-w/2));
   var ny=Math.max(0,Math.min(window.innerHeight-w,y-w/2));
   el.style.left=nx+'px'; el.style.top=ny+'px'; el.style.margin='0';
+}
+
+// ── NAVEGACIÓN LATERAL EN MODAL ──────────────────────────────────
+function navFoto(dir){
+  var newIdx=_fotoIdx+dir;
+  if(newIdx<0||newIdx>=_fotoList.length) return;
+  openFoto(_fotoList[newIdx]);
 }
 
 // ── AGREGAR AL PEDIDO DESDE VITRINA ──────────────────────────────
@@ -954,6 +985,13 @@ function closeModal(id){ document.getElementById(id).classList.remove('open'); }
 var _tt;
 function showToast(msg,err){ var t=document.getElementById('toast'); t.textContent=msg; t.className='show'+(err?' err':''); clearTimeout(_tt); _tt=setTimeout(function(){ t.className=''; },3500); }
 document.addEventListener('click',function(e){ if(!e.target.closest('.ac-wrap')) document.querySelectorAll('.ac-drop').forEach(function(d){ d.classList.remove('open'); }); });
+document.addEventListener('keydown',function(e){
+  if(document.getElementById('modal-foto').classList.contains('open')){
+    if(e.key==='ArrowLeft') navFoto(-1);
+    else if(e.key==='ArrowRight') navFoto(1);
+    else if(e.key==='Escape') closeFoto();
+  }
+});
 </script>
 </body>
 </html>
