@@ -699,7 +699,16 @@ function moveRing(x,y){
 // ── GRID PEDIDO ────────────────────────────────────────────────────
 function initGrid(){ gridRows=[]; for(let i=0;i<GRID_SIZE;i++) gridRows.push({raw:'',qty:1,prod:null}); renderGrid(); }
 function lookup(val){ const v=val.trim().toUpperCase(); const s=stockMap[v]; if(s){ const pr=productos.find(p=>(p.sku||'').toUpperCase()===v); return {sku:v,des:pr?pr.nombre:v,stock:s.stock,precio:s.precio}; } return null; }
-function searchProducts(q,n){ const qU=q.toUpperCase(); return Object.entries(stockMap).filter(([sku])=>sku.includes(qU)).slice(0,n).map(([sku,s])=>{ const pr=productos.find(p=>(p.sku||'').toUpperCase()===sku); return {sku,des:pr?pr.nombre:sku,stock:s.stock,precio:s.precio}; })); }
+function searchProducts(q, n) {
+  var qU = q.toUpperCase();
+  var entries = Object.entries(stockMap).filter(function(e){ return e[0].includes(qU); }).slice(0, n);
+  return entries.map(function(e){
+    var sku = e[0], s = e[1];
+    var pr = null;
+    for (var k=0; k<productos.length; k++) { if ((productos[k].sku||'').toUpperCase()===sku){ pr=productos[k]; break; } }
+    return { sku: sku, des: pr ? pr.nombre : sku, stock: s.stock, precio: s.precio };
+  });
+}
 function renderGrid(){
   const tbody=document.getElementById('grid-body');
   tbody.innerHTML=gridRows.map((r,i)=>{
