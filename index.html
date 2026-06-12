@@ -401,7 +401,7 @@ let gridRows=[], _acMatches={};
 let arStream=null, arFacing='environment', arDragging=false, arDragOffX=0, arDragOffY=0;
 
 function authHeaders(){ return {'x-client-code':clientCode}; }
-function cleanVal(v){ if(!v) return ''; var p=v.split(','); return p.length>1?p.slice(1).join(',').trim():v.trim(); }
+function cleanVal(v){ if(!v) return ''; var s=Array.isArray(v)?v.join(','):String(v); var p=s.split(','); return p.length>1?p.slice(1).join(',').trim():s.trim(); }
 
 // ── AUTH ──────────────────────────────────────────────────────────
 async function doLogin(){
