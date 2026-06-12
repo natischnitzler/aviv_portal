@@ -1,329 +1,273 @@
-const express = require('express');
-const xmlrpc  = require('xmlrpc');
-const cors    = require('cors');
-const fs      = require('fs');
-const path    = require('path');
+const express  = require('express');
+const xmlrpc   = require('xmlrpc');
+const cors     = require('cors');
+const fs       = require('fs');
+const path     = require('path');
+const archiver = require('archiver');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── CONFIGURACIÓN ODOO AVIV ──────────────────────────────────────
 const ODOO_URL  = 'https://aviv.odoo.com';
 const ODOO_DB   = process.env.ODOO_DB   || '';
 const ODOO_USER = process.env.ODOO_USER || '';
 const ODOO_PASS = process.env.ODOO_PASSWORD || '';
 
-// ── CLIENTES DESDE CSV ───────────────────────────────────────────
+const CATEGORIAS_OK = ['Oro / Anillo', 'Plata / Anillo', 'Plata / Argolla'];
+
+// ── CSV ──────────────────────────────────────────────────────────
 function loadClientes() {
   const file = path.join(__dirname, '..', 'clientes.csv');
-  if (!fs.existsSync(file)) { console.warn('⚠ No se encontró clientes.csv'); return {}; }
-
-  const rawContent = fs.readFileSync(file, 'utf8');
-  const firstLine  = rawContent.split(/\r?\n/)[0];
-  const sep        = firstLine.includes(';') ? ';' : ',';
-
-  function parseCSVLine(line) {
-    const fields = []; let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"')              { inQ = !inQ; }
-      else if (c === sep && !inQ) { fields.push(cur.trim()); cur = ''; }
-      else                        { cur += c; }
+  if (!fs.existsSync(file)) return {};
+  const raw = fs.readFileSync(file, 'utf8');
+  const sep = raw.split(/\r?\n/)[0].includes(';') ? ';' : ',';
+  function parseLine(line) {
+    const f=[]; let cur='', inQ=false;
+    for (const c of line) {
+      if (c==='"') inQ=!inQ;
+      else if (c===sep&&!inQ) { f.push(cur.trim()); cur=''; }
+      else cur+=c;
     }
-    fields.push(cur.trim());
-    return fields;
+    f.push(cur.trim()); return f;
   }
-
-  const lines  = rawContent.split(/\r?\n/).filter(Boolean);
+  const lines = raw.split(/\r?\n/).filter(Boolean);
   const result = {};
-  for (let i = 1; i < lines.length; i++) {
-    const p = parseCSVLine(lines[i]);
-    if (p.length < 3) continue;
-    const codigo    = (p[0]||'').trim().toUpperCase();
-    const nombre    = (p[1]||'').trim();
-    const partnerId = parseInt(p[2]||'0', 10);
-    const sucRaw    = (p[3]||'').replace(/^"|"$/g,'').trim();
-    const sucursales = sucRaw ? sucRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
-    if (codigo && partnerId) {
-      result[codigo] = { partnerId, name: nombre, sucursales };
-    }
+  for (let i=1;i<lines.length;i++) {
+    const p = parseLine(lines[i]);
+    if (p.length<3) continue;
+    const codigo       = (p[0]||'').trim().toUpperCase();
+    const nombre       = (p[1]||'').trim();
+    const partnerId    = parseInt(p[2]||'0',10);
+    const multiplicador= parseFloat(p[3]||'3');
+    const sucRaw       = (p[4]||'').replace(/^"|"$/g,'').trim();
+    const sucursales   = sucRaw ? sucRaw.split(',').map(s=>s.trim()).filter(Boolean) : [];
+    if (codigo && partnerId) result[codigo] = { partnerId, name:nombre, multiplicador, sucursales };
   }
-  console.log('✅ Clientes cargados:', Object.keys(result).join(', '));
+  console.log('✅ Clientes:', Object.keys(result).join(', '));
   return result;
 }
-
 const CLIENTES = loadClientes();
-function getCliente(code) { return CLIENTES[(code||'').toUpperCase()] || null; }
+function getCliente(code) { return CLIENTES[(code||'').toUpperCase()]||null; }
 
-// ── AUTH ODOO CON CACHÉ ──────────────────────────────────────────
-let cachedUID    = null;
-let lastAuthTime = 0;
-const AUTH_TTL   = 3600000;
-
+// ── ODOO AUTH ────────────────────────────────────────────────────
+let cachedUID=null, lastAuthTime=0;
 async function getUID() {
-  if (cachedUID && (Date.now() - lastAuthTime) < AUTH_TTL) return cachedUID;
-  const client = xmlrpc.createSecureClient({
-    host: new URL(ODOO_URL).hostname, port: 443, path: '/xmlrpc/2/common'
+  if (cachedUID && (Date.now()-lastAuthTime)<3600000) return cachedUID;
+  const client = xmlrpc.createSecureClient({host:new URL(ODOO_URL).hostname,port:443,path:'/xmlrpc/2/common'});
+  return new Promise((resolve,reject)=>{
+    client.methodCall('authenticate',[ODOO_DB,ODOO_USER,ODOO_PASS,{}],(err,uid)=>{
+      if(err) return reject(err);
+      cachedUID=uid; lastAuthTime=Date.now(); resolve(uid);
+    });
   });
-  return new Promise((resolve, reject) => {
-    client.methodCall('authenticate', [ODOO_DB, ODOO_USER, ODOO_PASS, {}], (err, uid) => {
-      if (err) return reject(err);
-      cachedUID = uid; lastAuthTime = Date.now();
-      console.log('✅ UID Odoo Aviv:', uid);
-      resolve(uid);
+}
+function xmlrpcCall(model,method,args) {
+  return getUID().then(uid=>{
+    const client=xmlrpc.createSecureClient({host:new URL(ODOO_URL).hostname,port:443,path:'/xmlrpc/2/object'});
+    return new Promise((resolve,reject)=>{
+      client.methodCall('execute_kw',[ODOO_DB,uid,ODOO_PASS,model,method,args],(err,r)=>err?reject(err):resolve(r));
     });
   });
 }
 
-function xmlrpcCall(model, method, args) {
-  return getUID().then(uid => {
-    const client = xmlrpc.createSecureClient({
-      host: new URL(ODOO_URL).hostname, port: 443, path: '/xmlrpc/2/object'
-    });
-    return new Promise((resolve, reject) => {
-      client.methodCall('execute_kw', [ODOO_DB, uid, ODOO_PASS, model, method, args],
-        (err, result) => err ? reject(err) : resolve(result)
-      );
-    });
-  });
-}
+// ── CACHÉ ────────────────────────────────────────────────────────
+const cache={};
+function cacheGet(k){ const e=cache[k]; if(!e) return null; if(Date.now()-e.ts>e.ttl){delete cache[k];return null;} return e.data; }
+function cacheSet(k,d,ttl){ cache[k]={data:d,ts:Date.now(),ttl}; }
 
-// ── MIDDLEWARE auth ──────────────────────────────────────────────
-function requireClient(req, res, next) {
-  const code    = (req.headers['x-client-code'] || '').toUpperCase();
-  const cliente = getCliente(code);
-  if (!cliente) return res.status(401).json({ error: 'Cliente no reconocido' });
-  req.partnerId  = cliente.partnerId;
-  req.clientName = cliente.name;
+// ── MIDDLEWARE ───────────────────────────────────────────────────
+function requireClient(req,res,next){
+  const code=(req.headers['x-client-code']||'').toUpperCase();
+  const c=getCliente(code);
+  if(!c) return res.status(401).json({error:'Cliente no reconocido'});
+  req.partnerId=c.partnerId; req.clientName=c.name; req.multiplicador=c.multiplicador||3;
   next();
 }
 
-// ── CACHÉ EN MEMORIA ─────────────────────────────────────────────
-const cache = {};
-const CACHE_TTL = {
-  productos: 30 * 60 * 1000,  // 30 min
-  stock:     15 * 60 * 1000,  // 15 min
-  pricelist:  60 * 60 * 1000, // 60 min
-};
-function cacheGet(key) {
-  const e = cache[key];
-  if (!e) return null;
-  if (Date.now() - e.ts > e.ttl) { delete cache[key]; return null; }
-  return e.data;
-}
-function cacheSet(key, data, ttl) { cache[key] = { data, ts: Date.now(), ttl }; }
-
-// ── OBTENER PRICELIST DEL CLIENTE ────────────────────────────────
+// ── PRICELIST ────────────────────────────────────────────────────
 async function getPricelistId(partnerId) {
-  const cached = cacheGet('pricelist_' + partnerId);
-  if (cached !== null) return cached;
-
-  const partners = await xmlrpcCall('res.partner', 'read', [
-    [partnerId], ['property_product_pricelist']
-  ]);
-  const pl = partners[0]?.property_product_pricelist;
-  const plId = Array.isArray(pl) ? pl[0] : null;
-  cacheSet('pricelist_' + partnerId, plId, CACHE_TTL.pricelist);
-  return plId;
+  const cached=cacheGet('pl_'+partnerId); if(cached!==null) return cached;
+  const r=await xmlrpcCall('res.partner','read',[[partnerId],['property_product_pricelist']]);
+  const pl=r[0]?.property_product_pricelist;
+  const plId=Array.isArray(pl)?pl[0]:null;
+  cacheSet('pl_'+partnerId,plId,3600000); return plId;
 }
 
-// ════════════════════════════════════════════════════════════════
-// MÓDULO 1 — BIBLIOTECA DE PRODUCTOS
-// ════════════════════════════════════════════════════════════════
-app.get('/api/productos', async (req, res) => {
-  try {
-    const code    = (req.headers['x-client-code'] || '').toUpperCase();
-    const cliente = getCliente(code);
-    if (!cliente) return res.status(401).json({ error: 'Cliente no reconocido' });
+// ── FETCH PRODUCTOS BASE ─────────────────────────────────────────
+async function fetchProductos() {
+  const cached=cacheGet('productos'); if(cached) return cached;
 
-    const cached = cacheGet('productos');
-    if (cached) return res.json(cached);
+  const categIds=await xmlrpcCall('product.category','search',[[['complete_name','in',CATEGORIAS_OK]]]);
+  const domain=[['sale_ok','=',true],['active','=',true]];
+  if(categIds.length) domain.push(['categ_id','in',categIds]);
 
-    const prodIds = await xmlrpcCall('product.template', 'search', [[
-      ['sale_ok', '=', true],
-      ['active',  '=', true]
+  const prodIds=await xmlrpcCall('product.product','search',[domain]);
+  if(!prodIds.length) return [];
+
+  const result=[];
+  for(let i=0;i<prodIds.length;i+=200){
+    const chunk=prodIds.slice(i,i+200);
+    const prods=await xmlrpcCall('product.product','read',[chunk,[
+      'id','default_code','name','list_price','categ_id',
+      'image_128','barcode','qty_available',
+      'product_template_attribute_value_ids','product_tmpl_id'
     ]]);
-    if (!prodIds.length) return res.json([]);
 
-    const productos = await xmlrpcCall('product.template', 'read', [
-      prodIds,
-      ['id','name','default_code','description_sale','list_price',
-       'categ_id','uom_id','image_128','barcode']
-    ]);
-
-    const result = productos.map(p => ({
-      id:          p.id,
-      sku:         p.default_code || '',
-      nombre:      p.name         || '',
-      descripcion: p.description_sale || '',
-      precio:      parseFloat(p.list_price || 0),
-      categoria:   Array.isArray(p.categ_id) ? p.categ_id[1] : '',
-      unidad:      Array.isArray(p.uom_id)   ? p.uom_id[1]   : '',
-      imagen:      p.image_128 ? 'data:image/png;base64,' + p.image_128 : null,
-      barcode:     p.barcode || ''
-    }));
-
-    cacheSet('productos', result, CACHE_TTL.productos);
-    res.json(result);
-  } catch(e) {
-    console.error('❌ /api/productos', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.delete('/api/productos/cache', (req, res) => {
-  Object.keys(cache).filter(k => k.startsWith('productos')).forEach(k => delete cache[k]);
-  res.json({ ok: true });
-});
-
-// ════════════════════════════════════════════════════════════════
-// MÓDULO 2 — STOCK + PRECIOS POR PRICELIST DEL CLIENTE
-// ════════════════════════════════════════════════════════════════
-app.get('/api/stock', async (req, res) => {
-  try {
-    const code    = (req.headers['x-client-code'] || '').toUpperCase();
-    const cliente = getCliente(code);
-    if (!cliente) return res.status(401).json({ error: 'Cliente no reconocido' });
-
-    const cached = cacheGet('stock_' + code);
-    if (cached) return res.json(cached);
-
-    // 1. Traer stock de todos los productos
-    const prodIds = await xmlrpcCall('product.product', 'search', [[
-      ['sale_ok', '=', true],
-      ['active',  '=', true]
-    ]]);
-    if (!prodIds.length) return res.json([]);
-
-    const prods = await xmlrpcCall('product.product', 'read', [
-      prodIds,
-      ['id','default_code','name','qty_available','list_price','product_tmpl_id']
-    ]);
-
-    // 2. Obtener pricelist del cliente y calcular precios
-    const plId = await getPricelistId(cliente.partnerId);
-    let preciosMap = {};
-
-    if (plId) {
-      try {
-        // Calcular precio con pricelist para cada producto
-        const skus = prods.map(p => p.id);
-        const precios = await xmlrpcCall('product.pricelist', 'get_products_price', [
-          [plId], skus, skus.map(() => 1), new Date().toISOString().slice(0, 10)
-        ]);
-        preciosMap = precios || {};
-      } catch(e) {
-        console.warn('⚠ No se pudo obtener precios de pricelist:', e.message);
-      }
+    const tmplIds=[...new Set(prods.map(p=>Array.isArray(p.product_tmpl_id)?p.product_tmpl_id[0]:p.product_tmpl_id))];
+    let tmplMap={};
+    if(tmplIds.length){
+      const tmpls=await xmlrpcCall('product.template','read',[tmplIds,['id','metal_type','rock_type','description_sale']]);
+      tmpls.forEach(t=>{tmplMap[t.id]=t;});
     }
 
-    const result = prods.map(p => ({
-      id:    p.id,
-      sku:   p.default_code || '',
-      des:   p.name         || '',
-      stock: parseFloat(p.qty_available || 0),
-      precio: parseFloat(preciosMap[p.id] || p.list_price || 0)
-    }));
+    const attrValIds=[...new Set(prods.flatMap(p=>p.product_template_attribute_value_ids||[]))];
+    let attrMap={};
+    if(attrValIds.length){
+      const attrVals=await xmlrpcCall('product.template.attribute.value','read',[attrValIds,['id','product_attribute_value_id']]);
+      const pavIds=attrVals.map(v=>Array.isArray(v.product_attribute_value_id)?v.product_attribute_value_id[0]:null).filter(Boolean);
+      let pavMap={};
+      if(pavIds.length){
+        const pavs=await xmlrpcCall('product.attribute.value','read',[pavIds,['id','name']]);
+        pavs.forEach(v=>{pavMap[v.id]=v.name;});
+      }
+      attrVals.forEach(v=>{
+        const pavId=Array.isArray(v.product_attribute_value_id)?v.product_attribute_value_id[0]:null;
+        attrMap[v.id]=pavId?pavMap[pavId]:'';
+      });
+    }
 
-    cacheSet('stock_' + code, result, CACHE_TTL.stock);
-    res.json(result);
-  } catch(e) {
-    console.error('❌ /api/stock', e.message);
-    res.status(500).json({ error: e.message });
+    prods.forEach(p=>{
+      const tmplId=Array.isArray(p.product_tmpl_id)?p.product_tmpl_id[0]:p.product_tmpl_id;
+      const tmpl=tmplMap[tmplId]||{};
+      const medidas=(p.product_template_attribute_value_ids||[]).map(id=>attrMap[id]||'').filter(Boolean);
+      result.push({
+        id:p.id, sku:p.default_code||'', nombre:p.name||'',
+        descripcion:tmpl.description_sale||'',
+        precio:parseFloat(p.list_price||0),
+        categoria:Array.isArray(p.categ_id)?p.categ_id[1]:'',
+        metal:tmpl.metal_type||'', piedra:tmpl.rock_type||'',
+        medida:medidas.join(', '),
+        imagen128:p.image_128||null,
+        barcode:p.barcode||'',
+        stock:parseFloat(p.qty_available||0)
+      });
+    });
   }
+  cacheSet('productos',result,30*60*1000);
+  return result;
+}
+
+// ════════════════════════════════════════════════════════════════
+// MÓDULO 1 — BIBLIOTECA
+// ════════════════════════════════════════════════════════════════
+app.get('/api/productos', async (req,res)=>{
+  try {
+    const code=(req.headers['x-client-code']||'').toUpperCase();
+    if(!getCliente(code)) return res.status(401).json({error:'Cliente no reconocido'});
+    const prods=await fetchProductos();
+    // No enviamos imagen128 en el listado (pesa mucho) — solo flag booleano
+    res.json(prods.map(p=>({...p,imagen:!!p.imagen128,imagen128:undefined})));
+  } catch(e){ console.error('❌ /api/productos',e.message); res.status(500).json({error:e.message}); }
 });
 
-app.delete('/api/stock/cache', (req, res) => {
-  const code = (req.headers['x-client-code'] || '').toUpperCase();
-  delete cache['stock_' + code];
-  res.json({ ok: true });
+app.delete('/api/productos/cache',(_req,res)=>{
+  Object.keys(cache).filter(k=>k.startsWith('productos')||k.startsWith('stock_')).forEach(k=>delete cache[k]);
+  res.json({ok:true});
+});
+
+// ── FOTOS ZIP ────────────────────────────────────────────────────
+app.get('/api/fotos', async (req,res)=>{
+  try {
+    const code=(req.headers['x-client-code']||'').toUpperCase();
+    if(!getCliente(code)) return res.status(401).json({error:'Cliente no reconocido'});
+    const cat=req.query.categoria||'';
+    let prods=await fetchProductos();
+    if(cat) prods=prods.filter(p=>p.categoria===cat);
+    prods=prods.filter(p=>p.imagen128);
+    if(!prods.length) return res.status(404).json({error:'Sin imágenes'});
+    res.setHeader('Content-Type','application/zip');
+    res.setHeader('Content-Disposition',`attachment; filename="aviv-fotos${cat?'-'+cat.replace(/[\s/]/g,'-'):''}.zip"`);
+    const archive=archiver('zip',{zlib:{level:6}});
+    archive.pipe(res);
+    prods.forEach(p=>{
+      const buf=Buffer.from(p.imagen128,'base64');
+      archive.append(buf,{name:`${(p.sku||p.id).replace(/[^a-zA-Z0-9_-]/g,'_')}.png`});
+    });
+    await archive.finalize();
+  } catch(e){ console.error('❌ /api/fotos',e.message); if(!res.headersSent) res.status(500).json({error:e.message}); }
+});
+
+// ════════════════════════════════════════════════════════════════
+// MÓDULO 2 — STOCK + PRECIO CON PRICELIST + MULTIPLICADOR
+// ════════════════════════════════════════════════════════════════
+app.get('/api/stock', async (req,res)=>{
+  try {
+    const code=(req.headers['x-client-code']||'').toUpperCase();
+    const cliente=getCliente(code);
+    if(!cliente) return res.status(401).json({error:'Cliente no reconocido'});
+
+    const cached=cacheGet('stock_'+code); if(cached) return res.json(cached);
+
+    let prods=await fetchProductos();
+    const plId=await getPricelistId(cliente.partnerId);
+    if(plId && prods.length){
+      try {
+        const ids=prods.map(p=>p.id);
+        const precios=await xmlrpcCall('product.pricelist','get_products_price',[[plId],ids,ids.map(()=>1),new Date().toISOString().slice(0,10)]);
+        prods=prods.map(p=>({...p,precio:parseFloat(precios[p.id]||p.precio)}));
+      } catch(e){ console.warn('⚠ pricelist:',e.message); }
+    }
+
+    const mult=cliente.multiplicador||3;
+    const result=prods.map(p=>({
+      id:p.id, sku:p.sku, des:p.nombre,
+      stock:p.stock, precio:p.precio,
+      precioSugerido: Math.round(p.precio * mult),
+      categoria:p.categoria, metal:p.metal, piedra:p.piedra, medida:p.medida
+    }));
+
+    cacheSet('stock_'+code,result,15*60*1000);
+    res.json(result);
+  } catch(e){ console.error('❌ /api/stock',e.message); res.status(500).json({error:e.message}); }
 });
 
 // ════════════════════════════════════════════════════════════════
 // MÓDULO 3 — INGRESO DE VENTAS
 // ════════════════════════════════════════════════════════════════
-app.post('/api/pedido', requireClient, async (req, res) => {
+app.post('/api/pedido', requireClient, async (req,res)=>{
   try {
-    const { productos, sucursal, nota } = req.body?.data || {};
-    if (!productos?.length) return res.status(400).json({ error: 'Sin productos' });
-
-    // Buscar IDs de productos por SKU
-    const skus = productos.map(p => p.sku);
-    const prodRecs = await xmlrpcCall('product.product', 'search_read', [[
-      ['default_code', 'in', skus],
-      ['active', '=', true]
-    ], { fields: ['id','default_code'] }]);
-
-    const skuToId = {};
-    prodRecs.forEach(p => { skuToId[p.default_code] = p.id; });
-
-    const orderLines = productos
-      .filter(p => skuToId[p.sku])
-      .map(p => [0, 0, {
-        product_id: skuToId[p.sku],
-        product_uom_qty: p.quantity,
-        name: p.sku
-      }]);
-
-    if (!orderLines.length) return res.status(400).json({ error: 'Ningún SKU reconocido en Odoo' });
-
-    const orderId = await xmlrpcCall('sale.order', 'create', [{
-      partner_id:  req.partnerId,
-      note:        [sucursal, nota].filter(Boolean).join(' | '),
-      order_line:  orderLines
-    }]);
-
-    // Confirmar la orden
-    await xmlrpcCall('sale.order', 'action_confirm', [[orderId]]);
-
-    res.json({ ok: true, orderId, message: 'Pedido creado en Odoo' });
-  } catch(e) {
-    console.error('❌ /api/pedido', e.message);
-    res.status(500).json({ error: e.message });
-  }
+    const {productos,sucursal,nota}=req.body?.data||{};
+    if(!productos?.length) return res.status(400).json({error:'Sin productos'});
+    const skus=productos.map(p=>p.sku);
+    const prodRecs=await xmlrpcCall('product.product','search_read',[[['default_code','in',skus],['active','=',true]],{fields:['id','default_code']}]);
+    const skuToId={};
+    prodRecs.forEach(p=>{skuToId[p.default_code]=p.id;});
+    const orderLines=productos.filter(p=>skuToId[p.sku]).map(p=>[0,0,{product_id:skuToId[p.sku],product_uom_qty:p.quantity,name:p.sku}]);
+    if(!orderLines.length) return res.status(400).json({error:'Ningún SKU reconocido'});
+    const orderId=await xmlrpcCall('sale.order','create',[{partner_id:req.partnerId,note:[sucursal,nota].filter(Boolean).join(' | '),order_line:orderLines}]);
+    await xmlrpcCall('sale.order','action_confirm',[[orderId]]);
+    res.json({ok:true,orderId,message:'Pedido creado en Odoo'});
+  } catch(e){ console.error('❌ /api/pedido',e.message); res.status(500).json({error:e.message}); }
 });
 
-// Historial de ventas
-app.get('/api/pedidos', requireClient, async (req, res) => {
+app.get('/api/pedidos', requireClient, async (req,res)=>{
   try {
-    const limit = parseInt(req.query.limit || '50');
-    const ids = await xmlrpcCall('sale.order', 'search', [[
-      ['partner_id', '=', req.partnerId],
-      ['state', 'in', ['sale','done','cancel']]
-    ], { order: 'date_order desc', limit }]);
-
-    if (!ids.length) return res.json([]);
-
-    const orders = await xmlrpcCall('sale.order', 'read', [
-      ids,
-      ['name','date_order','state','amount_total','amount_untaxed','note']
-    ]);
-
-    res.json(orders.map(o => ({
-      id:    o.id,
-      nombre: o.name,
-      fecha:  o.date_order,
-      estado: o.state,
-      total:  parseFloat(o.amount_total   || 0),
-      neto:   parseFloat(o.amount_untaxed || 0),
-      nota:   o.note || ''
-    })));
-  } catch(e) {
-    console.error('❌ /api/pedidos', e.message);
-    res.status(500).json({ error: e.message });
-  }
+    const limit=parseInt(req.query.limit||'50');
+    const ids=await xmlrpcCall('sale.order','search',[[['partner_id','=',req.partnerId],['state','in',['sale','done','cancel']]],{order:'date_order desc',limit}]);
+    if(!ids.length) return res.json([]);
+    const orders=await xmlrpcCall('sale.order','read',[ids,['name','date_order','state','amount_total','amount_untaxed','note']]);
+    res.json(orders.map(o=>({id:o.id,nombre:o.name,fecha:o.date_order,estado:o.state,total:parseFloat(o.amount_total||0),neto:parseFloat(o.amount_untaxed||0),nota:o.note||''})));
+  } catch(e){ console.error('❌ /api/pedidos',e.message); res.status(500).json({error:e.message}); }
 });
 
-// ── PERFIL ───────────────────────────────────────────────────────
-app.get('/api/me', (req, res) => {
-  const code    = (req.headers['x-client-code'] || '').toUpperCase();
-  const cliente = getCliente(code);
-  if (!cliente) return res.status(401).json({ error: 'Cliente no reconocido' });
-  res.json({ name: cliente.name, partnerId: cliente.partnerId, sucursales: cliente.sucursales || [] });
+app.get('/api/me',(req,res)=>{
+  const code=(req.headers['x-client-code']||'').toUpperCase();
+  const c=getCliente(code);
+  if(!c) return res.status(401).json({error:'Cliente no reconocido'});
+  res.json({name:c.name,partnerId:c.partnerId,multiplicador:c.multiplicador||3,sucursales:c.sucursales||[]});
 });
 
-// ── HEALTH CHECK ─────────────────────────────────────────────────
-app.get('/health', (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+app.get('/health',(req,res)=>res.json({ok:true,ts:new Date().toISOString()}));
 
 module.exports = app;
