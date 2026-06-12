@@ -502,7 +502,7 @@ function renderBiblioteca(){
       <td style="font-size:12px;">${esc(cleanVal(p.piedra))}</td>
       <td class="mono" style="text-align:center;">${esc(p.medida)}</td>
       <td class="mono">${fmt(p.precio)}</td>
-      <td style="font-size:12px;font-weight:600;${stc}">${p.stock>0?p.stock:'Sin stk'}</td>
+      <td style="font-size:12px;font-weight:600;${stc}">${p.stock>0?p.stock:0}</td>
     </tr>`;
   }).join(''):`<tr><td colspan="9" class="empty-row">Sin resultados</td></tr>`;
   document.getElementById('bib-loading').style.display='none';
@@ -543,32 +543,69 @@ async function loadStock(){
     renderVitrina(); initGrid();
   } catch(e){ console.warn('stock',e.message); initGrid(); }
 }
+function groupByTemplate(list) {
+  // Agrupar variantes por nombre base (quitando sufijo de talla)
+  var groups = {}, order = [];
+  list.forEach(function(p) {
+    // Clave: categoria + metal + piedra + nombre base sin talla
+    var base = p.nombre.replace(/\s*\(T:\s*\d+\)/,'').replace(/\s+-\s+T\s*\d+/,'').trim();
+    var key = p.categoria + '||' + cleanVal(p.metal) + '||' + cleanVal(p.piedra) + '||' + base;
+    if (!groups[key]) {
+      groups[key] = { rep: p, tallas: [], stockTotal: 0, key: key };
+      order.push(key);
+    }
+    var s = stockMap[(p.sku||'').toUpperCase()];
+    var stk = s ? s.stock : p.stock;
+    if (p.medida) groups[key].tallas.push({ medida: p.medida, stock: stk, id: p.id, sku: p.sku });
+    groups[key].stockTotal += stk;
+    // Usar el rep con mayor stock para la imagen
+    var repS = stockMap[(groups[key].rep.sku||'').toUpperCase()];
+    var repStk = repS ? repS.stock : groups[key].rep.stock;
+    if (stk > repStk) groups[key].rep = p;
+  });
+  return order.map(function(k){ return groups[k]; });
+}
+
 function renderVitrina(){
   const soloStock=document.getElementById('vit-solo-stock').checked;
   let list=getFiltered('vit');
-  if(soloStock) list=list.filter(p=>{ const s=stockMap[(p.sku||'').toUpperCase()]; return s&&s.stock>0; });
   document.getElementById('vit-loading').style.display='none';
   const grid=document.getElementById('vit-grid');
   grid.style.display='grid';
   if(!list.length){ grid.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px 0;">Sin productos.</p>'; return; }
   const mult=clientData.multiplicador||3;
-  grid.innerHTML=list.map(p=>{
+  const groups = groupByTemplate(list);
+  const filtered = soloStock ? groups.filter(function(g){ return g.stockTotal > 0; }) : groups;
+  if(!filtered.length){ grid.innerHTML='<p style="color:var(--muted);font-size:13px;padding:20px 0;">Sin productos con stock.</p>'; return; }
+
+  grid.innerHTML=filtered.map(function(g){
+    const p=g.rep;
     const s=stockMap[(p.sku||'').toUpperCase()];
     const ps=s?s.precioSugerido:Math.round(p.precio*mult);
-    const stk=s?s.stock:p.stock;
     const cc=(p.categoria||'').startsWith('Oro')?'cat-oro':'cat-plata';
-    const stBadge=stk>0?`<span class="vit-stock-badge vit-badge-ok">${stk} uds</span>`:`<span class="vit-stock-badge vit-badge-no">Sin stock</span>`;
-    const meta=[cleanVal(p.metal),cleanVal(p.piedra),p.medida?'T:'+p.medida:''].filter(Boolean).join(' · ');
-    return `<div class="vit-card" onclick="openFoto('${esc(p.sku)}')">
+    const stBadge=g.stockTotal>0
+      ?`<span class="vit-stock-badge vit-badge-ok">${g.stockTotal}</span>`
+      :`<span class="vit-stock-badge vit-badge-no">0</span>`;
+    const meta=[cleanVal(p.metal),cleanVal(p.piedra)].filter(Boolean).join(' · ');
+    // Chips de tallas con stock
+    const tallasHtml = g.tallas.length
+      ? g.tallas.sort(function(a,b){ return parseFloat(a.medida)-parseFloat(b.medida); })
+          .map(function(t){
+            var cls = t.stock>0 ? 'background:#e0f2fe;color:#0369a1;' : 'background:#f3f4f6;color:#9ca3af;text-decoration:line-through;';
+            return `<span style="display:inline-block;padding:1px 7px;border-radius:12px;font-size:11px;font-weight:600;margin:2px;${cls}">${t.medida}</span>`;
+          }).join('')
+      : '';
+    return `<div class="vit-card" onclick="openFoto(${p.id})">
       <div class="vit-img-wrap">
-        ${p.imagen?`<img class="vit-img" src="/api/imagen/${p.id}?c=${clientCode}" onerror="this.style.display='none'" loading="lazy" alt="">`:`<div class="vit-img-placeholder">💍</div>`}
+        ${p.imagen?`<img class="vit-img" src="/api/imagen/${p.id}?c=${clientCode}" onerror="this.style.display='none'" loading="lazy" alt="">` : `<div class="vit-img-placeholder">💍</div>`}
         ${stBadge}
       </div>
       <div class="vit-body">
-        <div class="vit-sku">${esc(p.sku)}</div>
-        <div class="vit-name">${esc(p.nombre)}</div>
+        <div class="vit-sku">${esc(p.sku.split('-').slice(0,2).join('-'))}</div>
+        <div class="vit-name">${esc(p.nombre.replace(/\s*-\*\*\d+$/,'').trim())}</div>
         ${meta?`<div class="vit-meta">${esc(meta)}</div>`:''}
-        <span class="badge-cat ${cc}" style="font-size:10px;margin-bottom:8px;display:inline-block;">${esc(p.categoria)}</span>
+        <span class="badge-cat ${cc}" style="font-size:10px;margin-bottom:6px;display:inline-block;">${esc(p.categoria)}</span>
+        ${tallasHtml?`<div style="margin-bottom:6px;">${tallasHtml}</div>`:''}
         <div class="vit-price-label">Precio sugerido</div>
         <div class="vit-price">${fmt(ps)}</div>
       </div>
@@ -578,8 +615,8 @@ function renderVitrina(){
 
 // ── MODAL FICHA ───────────────────────────────────────────────────
 let _fotoActual=null;
-function openFoto(sku){
-  const p=productos.find(x=>(x.sku||'').toUpperCase()===sku.toUpperCase());
+function openFoto(id){
+  const p=productos.find(x=>x.id===id);
   if(!p) return;
   _fotoActual=p;
   const s=stockMap[sku.toUpperCase()];
@@ -620,7 +657,7 @@ function openFoto(sku){
     <div class="foto-row"><div class="foto-lbl">Metal</div><div class="foto-val">${esc(metalClean)||'—'}</div></div>
     <div class="foto-row"><div class="foto-lbl">Piedra</div><div class="foto-val">${esc(piedraClean)||'—'}</div></div>
     <div class="foto-row" style="grid-column:1/-1;"><div class="foto-lbl">Medidas disponibles</div><div style="margin-top:4px;">${medidasHtml}</div></div>
-    <div class="foto-row"><div class="foto-lbl">Stock esta variante</div><div class="foto-val" style="color:${stColor};font-weight:700;">${stk>0?stk+' uds':'Sin stock'}</div></div>
+    <div class="foto-row"><div class="foto-lbl">Stock esta variante</div><div class="foto-val" style="color:${stColor};font-weight:700;">${stk>0?stk:0}</div></div>
     ${descHtml}
     <div class="foto-price-box">
       <div class="foto-price-lbl">Precio sugerido al público</div>
