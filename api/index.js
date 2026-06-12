@@ -271,3 +271,24 @@ app.get('/api/me',(req,res)=>{
 app.get('/health',(req,res)=>res.json({ok:true,ts:new Date().toISOString()}));
 
 module.exports = app;
+
+// ── IMAGEN INDIVIDUAL ─────────────────────────────────────────────
+app.get('/api/imagen/:id', async (req,res)=>{
+  try {
+    // Acepta header x-client-code O query param ?c= (para img tags HTML)
+    const code=(req.headers['x-client-code']||req.query.c||'').toUpperCase();
+    if(!getCliente(code)) return res.status(401).json({error:'No autorizado'});
+    const id=parseInt(req.params.id);
+    if(!id) return res.status(400).json({error:'ID inválido'});
+
+    // Buscar en caché primero
+    const prods=await fetchProductos();
+    const prod=prods.find(p=>p.id===id);
+    if(!prod?.imagen128) return res.status(404).json({error:'Sin imagen'});
+
+    const buf=Buffer.from(prod.imagen128,'base64');
+    res.setHeader('Content-Type','image/png');
+    res.setHeader('Cache-Control','public, max-age=3600');
+    res.send(buf);
+  } catch(e){ res.status(500).json({error:e.message}); }
+});
