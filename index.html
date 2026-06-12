@@ -95,11 +95,13 @@ body{font-family:var(--sans);background:var(--white);color:var(--black);min-heig
 /* ── FICHA MODAL ── */
 #modal-ficha{position:fixed;inset:0;background:var(--white);z-index:200;display:none;flex-direction:column;overflow-y:auto;}
 #modal-ficha.open{display:flex;}
+.ficha-inner{display:flex;flex-direction:column;flex:1;overflow-y:auto;}
+@media(min-width:700px){.ficha-inner{flex-direction:row;overflow:hidden;} .ficha-img{flex:1;max-height:none !important;aspect-ratio:unset !important;} .ficha-body{flex:1;overflow-y:auto;padding:28px 24px 0 !important;}}
 .ficha-img{background:var(--gray5);aspect-ratio:1;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;max-height:55vw;}
 .ficha-img img{width:100%;height:100%;object-fit:contain;padding:16px;}
 .ficha-img-ph{font-size:80px;color:var(--gray3);}
 .ficha-back{position:absolute;top:12px;left:12px;background:rgba(255,255,255,.92);border:none;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--black);}
-.ficha-stk-badge{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.92);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--green);}
+.ficha-stk-badge{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.92);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;}
 .ficha-body{padding:18px 16px 0;flex:1;}
 .ficha-meta{font-size:11px;color:var(--gray2);letter-spacing:.3px;margin-bottom:5px;}
 .ficha-nombre{font-family:var(--serif);font-size:22px;font-weight:300;color:var(--black);line-height:1.3;margin-bottom:6px;}
@@ -268,6 +270,9 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
           <button class="pill" data-cat="Oro / Anillo" onclick="setVitCat(this)">Oro / Anillo</button>
           <button class="pill" data-cat="Plata / Anillo" onclick="setVitCat(this)">Plata / Anillo</button>
           <button class="pill" data-cat="Plata / Argolla" onclick="setVitCat(this)">Plata / Argolla</button>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray2);white-space:nowrap;cursor:pointer;padding:6px 14px;border:1px solid var(--gray4);border-radius:20px;">
+            <input type="checkbox" id="vit-solo-stock" onchange="renderVitrina()"/> Solo con stock
+          </label>
         </div>
       </div>
       <div id="vit-loading" class="loading"><span class="spinner"></span>Cargando...</div>
@@ -370,18 +375,20 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
 
 <!-- FICHA PRODUCTO (pantalla completa) -->
 <div id="modal-ficha">
-  <div class="ficha-img" id="ficha-img">
-    <button class="ficha-back" onclick="closeFicha()">←</button>
-    <div class="ficha-stk-badge" id="ficha-stk-badge"></div>
-  </div>
-  <div class="ficha-body">
-    <div class="ficha-meta" id="ficha-meta"></div>
-    <div class="ficha-nombre" id="ficha-nombre"></div>
-    <div class="ficha-sub" id="ficha-sub"></div>
-    <div class="ficha-talla-lbl">Selecciona la talla</div>
-    <div class="tallas-row" id="ficha-tallas"></div>
-    <div class="precio-lbl">Precio sugerido al público</div>
-    <div class="precio-val" id="ficha-precio"></div>
+  <div class="ficha-inner">
+    <div class="ficha-img" id="ficha-img">
+      <button class="ficha-back" onclick="closeFicha()">←</button>
+      <div class="ficha-stk-badge" id="ficha-stk-badge"></div>
+    </div>
+    <div class="ficha-body">
+      <div class="ficha-meta" id="ficha-meta"></div>
+      <div class="ficha-nombre" id="ficha-nombre"></div>
+      <div class="ficha-sub" id="ficha-sub"></div>
+      <div class="ficha-talla-lbl">Selecciona la talla</div>
+      <div class="tallas-row" id="ficha-tallas"></div>
+      <div class="precio-lbl">Precio sugerido al público</div>
+      <div class="precio-val" id="ficha-precio"></div>
+    </div>
   </div>
   <div class="ficha-footer">
     <button class="ficha-nav-btn" id="ficha-prev" onclick="navFicha(-1)">‹</button>
@@ -617,8 +624,13 @@ function setVitCat(btn){
 var _vitGroups=[];
 function renderVitrina(){
   var q=(document.getElementById('vit-search')?document.getElementById('vit-search').value:'').toLowerCase();
+  var soloStock=document.getElementById('vit-solo-stock')&&document.getElementById('vit-solo-stock').checked;
   var list=productos.filter(function(p){
-    return (!q||p.sku.toLowerCase().includes(q)||p.nombre.toLowerCase().includes(q))&&(!_vitCat||p.categoria===_vitCat);
+    var s=stockMap[(p.sku||'').toUpperCase()];
+    var stk=s?s.stock:p.stock;
+    return (!q||p.sku.toLowerCase().includes(q)||p.nombre.toLowerCase().includes(q))&&
+      (!_vitCat||p.categoria===_vitCat)&&
+      (!soloStock||stk>0);
   });
   document.getElementById('vit-loading').style.display='none';
   var grid=document.getElementById('vit-grid');
@@ -655,7 +667,9 @@ function renderVitrina(){
 
 // ── FICHA ─────────────────────────────────────────────────────────
 function abrirFicha(gi){
+  if(!_vitGroups.length){ showToast('Cargando productos...',true); return; }
   _fichaIdx=gi; _fichaActual=_vitGroups[gi]; _tallaSel=null;
+  if(!_fichaActual){ console.warn('grupo no encontrado:',gi); return; }
   renderFicha();
   document.getElementById('modal-ficha').classList.add('open');
   document.body.style.overflow='hidden';
@@ -672,6 +686,7 @@ function navFicha(dir){
 }
 function renderFicha(){
   var g=_fichaActual;
+  if(!g||!g.rep){ console.warn('renderFicha: sin grupo'); return; }
   var p=g.rep;
   var mult=clientData.multiplicador||3;
   var s=stockMap[(p.sku||'').toUpperCase()];
@@ -693,6 +708,7 @@ function renderFicha(){
   var stkBadge=document.getElementById('ficha-stk-badge');
   stkBadge.textContent=g.stockTotal;
   stkBadge.style.color=g.stockTotal>0?'var(--green)':'var(--red)';
+  stkBadge.style.background='rgba(255,255,255,0.92)';
 
   document.getElementById('ficha-meta').textContent=p.sku+' · '+p.categoria;
   document.getElementById('ficha-nombre').textContent=cleanNombre(p.nombre);
