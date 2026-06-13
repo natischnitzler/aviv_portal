@@ -78,7 +78,8 @@ body{font-family:var(--sans);background:var(--white);color:var(--black);min-heig
 .vit-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray4);}
 .vit-card{background:var(--white);cursor:pointer;position:relative;}
 .vit-card.no-stock{opacity:.4;}
-.vit-img-wrap{aspect-ratio:1;background:var(--gray5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;max-height:28vw;}
+.vit-img-wrap{aspect-ratio:1;background:var(--gray5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;max-height:22vw;}
+@media(min-width:600px){.vit-img-wrap{max-height:160px;}}
 .vit-img{width:100%;height:100%;object-fit:contain;padding:8px;}
 .vit-img-ph{font-size:36px;color:var(--gray3);}
 .vit-stk{position:absolute;top:5px;left:5px;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
@@ -267,9 +268,8 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
         <div class="vit-search"><span>🔍</span><input id="vit-search" placeholder="Buscar producto..." oninput="renderVitrina()"/></div>
         <div class="pills-row" id="vit-pills">
           <button class="pill active" data-cat="" onclick="setVitCat(this)">Todas</button>
-          <button class="pill" data-cat="Oro / Anillo" onclick="setVitCat(this)">Oro / Anillo</button>
-          <button class="pill" data-cat="Plata / Anillo" onclick="setVitCat(this)">Plata / Anillo</button>
-          <button class="pill" data-cat="Plata / Argolla" onclick="setVitCat(this)">Plata / Argolla</button>
+          <button class="pill" data-cat="Oro" onclick="setVitCat(this)">Oro</button>
+          <button class="pill" data-cat="Plata" onclick="setVitCat(this)">Plata</button>
           <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray2);white-space:nowrap;cursor:pointer;padding:6px 14px;border:1px solid var(--gray4);border-radius:20px;">
             <input type="checkbox" id="vit-solo-stock" onchange="renderVitrina()"/> Solo con stock
           </label>
@@ -295,9 +295,8 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
         </div>
         <div class="bib-filters" id="bib-pills">
           <button class="pill active" data-cat="" onclick="setBibCat(this)">Todas</button>
-          <button class="pill" data-cat="Oro / Anillo" onclick="setBibCat(this)">Oro / Anillo</button>
-          <button class="pill" data-cat="Plata / Anillo" onclick="setBibCat(this)">Plata / Anillo</button>
-          <button class="pill" data-cat="Plata / Argolla" onclick="setBibCat(this)">Plata / Argolla</button>
+          <button class="pill" data-cat="Oro" onclick="setBibCat(this)">Oro</button>
+          <button class="pill" data-cat="Plata" onclick="setBibCat(this)">Plata</button>
         </div>
         <div class="bib-actions">
           <button class="t-btn" onclick="refreshBiblioteca()">Actualizar</button>
@@ -643,7 +642,7 @@ function getBibFiltered(){
   var orden=document.getElementById('bib-orden').value;
   var list=productos.filter(function(p){
     return (!q||p.sku.toLowerCase().includes(q)||p.nombre.toLowerCase().includes(q))&&
-      (!_bibCat||p.categoria===_bibCat)&&(!soloStock||p.stock>0);
+      (!_bibCat||p.categoria.startsWith(_bibCat))&&(!soloStock||p.stock>0);
   });
   if(orden==='nombre') list.sort(function(a,b){ return a.nombre.localeCompare(b.nombre); });
   else if(orden==='precio-asc') list.sort(function(a,b){ return a.precio-b.precio; });
@@ -740,7 +739,7 @@ function renderVitrina(){
     var s=stockMap[(p.sku||'').toUpperCase()];
     var stk=s?s.stock:p.stock;
     return (!q||p.sku.toLowerCase().includes(q)||p.nombre.toLowerCase().includes(q))&&
-      (!_vitCat||p.categoria===_vitCat)&&
+      (!_vitCat||p.categoria.startsWith(_vitCat))&&
       (!soloStock||stk>0);
   });
   document.getElementById('vit-loading').style.display='none';
@@ -768,7 +767,7 @@ function renderVitrina(){
         +plusBtn
       +'</div>'
       +'<div class="vit-body">'
-        +'<div class="vit-sku">'+esc(p.sku.split('-').slice(0,2).join('-'))+'</div>'
+        +'<div class="vit-sku">'+esc(p.categoria)+'</div>'
         +'<div class="vit-name">'+esc(cleanNombre(p.nombre))+'</div>'
         +(tallasHtml?'<div class="vit-tallas">'+tallasHtml+'</div>':'')
         +'<div class="vit-price">'+fmt(ps)+'</div>'
