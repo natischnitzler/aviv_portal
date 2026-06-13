@@ -78,8 +78,8 @@ body{font-family:var(--sans);background:var(--white);color:var(--black);min-heig
 .vit-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--gray4);}
 .vit-card{background:var(--white);cursor:pointer;position:relative;}
 .vit-card.no-stock{opacity:.4;}
-.vit-img-wrap{aspect-ratio:1;background:var(--gray5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;max-height:22vw;}
-@media(min-width:600px){.vit-img-wrap{max-height:160px;}}
+.vit-img-wrap{height:140px;background:var(--gray5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+@media(max-width:400px){.vit-img-wrap{height:110px;}}
 .vit-img{width:100%;height:100%;object-fit:contain;padding:8px;}
 .vit-img-ph{font-size:36px;color:var(--gray3);}
 .vit-stk{position:absolute;top:5px;left:5px;font-size:9px;font-weight:700;padding:1px 6px;border-radius:10px;}
@@ -274,6 +274,10 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
             <input type="checkbox" id="vit-solo-stock" onchange="renderVitrina()"/> Solo con stock
           </label>
         </div>
+        <div class="pills-row">
+          <select style="height:30px;border:1px solid var(--gray4);border-radius:20px;padding:0 12px;font-size:11px;font-family:var(--sans);background:var(--white);color:var(--gray1);outline:none;" id="vit-metal" onchange="renderVitrina()"><option value="">Todo metal</option></select>
+          <select style="height:30px;border:1px solid var(--gray4);border-radius:20px;padding:0 12px;font-size:11px;font-family:var(--sans);background:var(--white);color:var(--gray1);outline:none;" id="vit-piedra" onchange="renderVitrina()"><option value="">Toda piedra</option></select>
+        </div>
       </div>
       <div id="vit-loading" class="loading"><span class="spinner"></span>Cargando...</div>
       <div id="vit-grid" class="vit-grid" style="display:none;"></div>
@@ -317,7 +321,15 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
     <!-- CARRITO / PEDIDO -->
     <div id="sec-carrito" class="section">
       <div class="cart-wrap">
-        <div id="cart-empty" class="cart-empty" style="display:none;">
+        <!-- Toggle carrito / manual -->
+      <div style="display:flex;gap:1px;background:var(--gray4);margin-bottom:16px;">
+        <button id="tab-carrito-btn" onclick="switchCartTab('carrito')" style="flex:1;padding:10px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-family:var(--sans);border:none;background:var(--black);color:var(--white);cursor:pointer;">Desde vitrina</button>
+        <button id="tab-manual-btn" onclick="switchCartTab('manual')" style="flex:1;padding:10px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-family:var(--sans);border:none;background:var(--gray5);color:var(--gray2);cursor:pointer;">Ingresar SKU</button>
+      </div>
+
+      <!-- Vista carrito -->
+      <div id="cart-view">
+      <div id="cart-empty" class="cart-empty" style="display:none;">
           <div style="font-size:32px;margin-bottom:12px;">🛒</div>
           Tu pedido está vacío.<br>Agrega productos desde la Vitrina.
         </div>
@@ -333,7 +345,28 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
           </div>
           <button class="cart-confirm-btn" onclick="openConfirm()">Confirmar pedido</button>
         </div>
+      </div><!-- /cart-view -->
+
+      <!-- Vista manual: tabla de SKUs -->
+      <div id="manual-view" style="display:none;">
+        <div style="font-size:12px;color:var(--gray2);margin-bottom:12px;line-height:1.5;">Ingresa los SKUs directamente. Busca por código o nombre.</div>
+        <div style="border:1px solid var(--gray4);margin-bottom:12px;">
+          <div style="display:flex;background:var(--gray5);border-bottom:1px solid var(--gray4);">
+            <div style="flex:2;padding:8px 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);">SKU / Producto</div>
+            <div style="width:64px;padding:8px 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);text-align:center;">Cant.</div>
+            <div style="width:60px;padding:8px 10px;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--gray2);text-align:center;">Stock</div>
+          </div>
+          <div id="manual-grid"></div>
+          <button onclick="addManualRow()" style="width:100%;padding:10px;border:none;border-top:1px solid var(--gray4);background:var(--white);font-size:11px;color:var(--gray2);cursor:pointer;font-family:var(--sans);">+ Agregar fila</button>
+        </div>
+        <div id="manual-nota" style="margin-bottom:12px;">
+          <div style="font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:6px;">Nota para Aviv</div>
+          <textarea style="width:100%;border:1px solid var(--gray4);padding:10px;font-size:13px;font-family:var(--sans);resize:none;height:60px;outline:none;" id="manual-nota-text" placeholder="Instrucciones..."></textarea>
+        </div>
+        <button onclick="confirmarManual()" style="width:100%;padding:14px;background:var(--black);color:var(--white);border:none;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);">Confirmar pedido</button>
       </div>
+
+    </div>
     </div>
 
     <!-- TALLA -->
@@ -435,9 +468,53 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
           </div>
         </div>
 
-        <div style="font-size:11px;color:var(--gray3);text-align:center;line-height:1.6;margin-top:8px;">
+        <div style="font-size:11px;color:var(--gray3);text-align:center;line-height:1.6;margin-top:8px;padding:12px;background:var(--gray5);">
           💡 Si estás entre dos tallas, elige la más grande.<br>
-          Los anillos muy ajustados pueden incomodar con el calor.
+          Los anillos muy ajustados pueden incomodar con el calor.<br><br>
+          <strong style="color:var(--gray2);">Aviv trabaja tallas del 11 al 18.</strong><br>
+          Si tu medida queda fuera de ese rango, consulta con tu ejecutiva de cuenta.
+        </div>
+
+      </div>
+    </div>
+
+    <!-- CONFIGURACIÓN -->
+    <div id="sec-config" class="section">
+      <div style="max-width:480px;margin:0 auto;padding:24px 16px 40px;">
+        <div style="font-family:var(--serif);font-size:28px;font-weight:300;margin-bottom:4px;">Configuración</div>
+        <div style="font-size:12px;color:var(--gray2);margin-bottom:28px;">Personaliza tu portal de ventas.</div>
+
+        <!-- Multiplicador de precio -->
+        <div style="border:1px solid var(--gray4);margin-bottom:16px;">
+          <div style="padding:16px;border-bottom:1px solid var(--gray4);">
+            <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:4px;">Precio sugerido</div>
+            <div style="font-family:var(--serif);font-size:18px;font-weight:300;margin-bottom:4px;">Multiplicador de precio</div>
+            <div style="font-size:12px;color:var(--gray2);line-height:1.6;">El precio sugerido que ve tu cliente es el precio de Aviv multiplicado por este número. Por ejemplo, si el precio es $100 y el multiplicador es 3, el precio sugerido será $300.</div>
+          </div>
+          <div style="padding:16px;">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+              <button onclick="cambiarMult(-0.5)" style="width:40px;height:40px;border:1px solid var(--gray4);background:var(--white);font-size:20px;cursor:pointer;">−</button>
+              <div style="flex:1;text-align:center;">
+                <div style="font-family:var(--serif);font-size:36px;font-weight:300;" id="mult-display">3</div>
+                <div style="font-size:10px;color:var(--gray3);letter-spacing:1px;text-transform:uppercase;">multiplicador actual</div>
+              </div>
+              <button onclick="cambiarMult(0.5)" style="width:40px;height:40px;border:1px solid var(--gray4);background:var(--white);font-size:20px;cursor:pointer;">+</button>
+            </div>
+            <div id="mult-ejemplo" style="text-align:center;padding:10px;background:var(--gray5);font-size:12px;color:var(--gray2);"></div>
+            <button onclick="guardarMult()" style="width:100%;padding:13px;background:var(--black);color:var(--white);border:none;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:var(--sans);margin-top:12px;">Guardar cambios</button>
+          </div>
+        </div>
+
+        <!-- Info de cuenta -->
+        <div style="border:1px solid var(--gray4);">
+          <div style="padding:16px;border-bottom:1px solid var(--gray4);">
+            <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gray3);margin-bottom:4px;">Tu cuenta</div>
+            <div style="font-family:var(--serif);font-size:18px;font-weight:300;" id="config-nombre"></div>
+          </div>
+          <div style="padding:16px;">
+            <div style="font-size:12px;color:var(--gray2);margin-bottom:12px;">¿Necesitas ayuda o tienes alguna consulta?</div>
+            <a href="https://wa.me/56958172668" target="_blank" style="display:block;text-align:center;padding:13px;border:1px solid var(--gray4);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--black);text-decoration:none;font-family:var(--sans);">WhatsApp +56 9 5817 2668</a>
+          </div>
         </div>
 
       </div>
@@ -475,6 +552,10 @@ table.bib-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600
     <button class="nav-item" id="nav-talla" onclick="goSection('talla')">
       <span class="nav-icon">📏</span>
       <span>Mi talla</span>
+    </button>
+    <button class="nav-item" id="nav-config" onclick="goSection('config')">
+      <span class="nav-icon">⚙️</span>
+      <span>Config</span>
     </button>
     <button class="nav-item" id="nav-historial" onclick="goSection('historial')">
       <span class="nav-icon">📋</span>
@@ -530,6 +611,14 @@ let _fichaList=[], _fichaIdx=0, _fichaActual=null, _tallaSel=null;
 let histCargado=false;
 
 function authH(){ return {'x-client-code':clientCode}; }
+function buildVitFilters(){
+  var metales=[...new Set(productos.map(function(p){ return cleanVal(p.metal); }).filter(Boolean))].sort();
+  var piedras=[...new Set(productos.map(function(p){ return cleanVal(p.piedra); }).filter(Boolean))].sort();
+  var sm=document.getElementById('vit-metal');
+  var sp=document.getElementById('vit-piedra');
+  if(sm) sm.innerHTML='<option value="">Todo metal</option>'+metales.map(function(m){ return '<option>'+m+'</option>'; }).join('');
+  if(sp) sp.innerHTML='<option value="">Toda piedra</option>'+piedras.map(function(p){ return '<option>'+p+'</option>'; }).join('');
+}
 function cleanVal(v){ if(!v) return ''; var s=Array.isArray(v)?v.join(','):String(v); var p=s.split(','); return p.length>1?p.slice(1).join(',').trim():s.trim(); }
 function cleanNombre(n){ return String(n||'').replace(/\s*-\s*\*\*\d+\s*$/,'').replace(/\s*\(\*\*\d+\)\s*$/,'').trim(); }
 function fmt(n){ return (n||n===0)?'$ '+Number(n).toLocaleString('es-CL'):'—'; }
@@ -571,6 +660,7 @@ function goSection(s){
   var ni=document.getElementById('nav-'+s);
   if(ni) ni.classList.add('active');
   if(s==='historial'&&!histCargado) loadHistorial();
+  if(s==='config') initConfig();
   if(s==='carrito') renderCarrito();
   window.scrollTo(0,0);
 }
@@ -630,6 +720,7 @@ async function loadBiblioteca(){
     var r=await fetch(BACKEND+'/api/productos',{headers:authH()});
     if(!r.ok) throw new Error('Error');
     productos=await r.json();
+    buildVitFilters();
     renderBiblioteca();
   } catch(e){ document.getElementById('bib-loading').innerHTML='Error al cargar'; }
 }
@@ -735,11 +826,15 @@ var _vitGroups=[];
 function renderVitrina(){
   var q=(document.getElementById('vit-search')?document.getElementById('vit-search').value:'').toLowerCase();
   var soloStock=document.getElementById('vit-solo-stock')&&document.getElementById('vit-solo-stock').checked;
+  var vitMetal=document.getElementById('vit-metal')?document.getElementById('vit-metal').value:'';
+  var vitPiedra=document.getElementById('vit-piedra')?document.getElementById('vit-piedra').value:'';
   var list=productos.filter(function(p){
     var s=stockMap[(p.sku||'').toUpperCase()];
     var stk=s?s.stock:p.stock;
     return (!q||p.sku.toLowerCase().includes(q)||p.nombre.toLowerCase().includes(q))&&
       (!_vitCat||p.categoria.startsWith(_vitCat))&&
+      (!vitMetal||cleanVal(p.metal)===vitMetal)&&
+      (!vitPiedra||cleanVal(p.piedra)===vitPiedra)&&
       (!soloStock||stk>0);
   });
   document.getElementById('vit-loading').style.display='none';
@@ -966,8 +1061,10 @@ function actualizarRegla(val){
   var realMm=(parseFloat(val)/(dpi/25.4)).toFixed(1);
   var talla=mmToTalla(parseFloat(realMm));
   label.textContent=realMm+' mm';
-  res.innerHTML=talla
+  var fuera=parseFloat(realMm)<14.8||parseFloat(realMm)>18.2;
+  res.innerHTML=talla&&!fuera
     ?'<strong style="font-family:var(--serif);font-size:20px;">Talla '+talla.talla+'</strong><br><span style="font-size:11px;color:var(--gray3);">Diámetro interior: '+talla.diam+' mm</span>'
+    :fuera?'<span style="color:var(--red);font-size:12px;">Esta talla está fuera del rango Aviv (11–18).<br>Consulta con tu ejecutiva.</span>'
     :'Ajusta el círculo hasta que coincida con tu anillo';
 }
 
@@ -977,9 +1074,154 @@ function calcularPapel(val){
   if(!mm||mm<40||mm>80){ res.innerHTML='<span style="color:var(--gray3);">Ingresa la medida en mm</span>'; return; }
   var diamMm=(mm/Math.PI).toFixed(1);
   var talla=mmToTalla(parseFloat(diamMm));
-  res.innerHTML=talla
+  var fuera2=parseFloat(diamMm)<14.8||parseFloat(diamMm)>18.2;
+  res.innerHTML=talla&&!fuera2
     ?'<strong style="font-family:var(--serif);font-size:20px;">Talla '+talla.talla+'</strong><br><span style="font-size:11px;color:var(--gray3);">Circunferencia '+mm+' mm · Diámetro ~'+diamMm+' mm</span>'
-    :'<span style="color:var(--red);">Medida fuera de rango</span>';
+    :'<span style="color:var(--red);font-size:12px;">Esta medida está fuera del rango Aviv (11–18).<br>Consulta con tu ejecutiva.</span>';
+}
+
+// ── PEDIDO MANUAL (tabla SKU) ────────────────────────────────────
+var _manualRows = [];
+var _manualAC = {};
+
+function switchCartTab(tab){
+  var cv=document.getElementById('cart-view');
+  var mv=document.getElementById('manual-view');
+  var cb=document.getElementById('tab-carrito-btn');
+  var mb=document.getElementById('tab-manual-btn');
+  if(tab==='carrito'){
+    cv.style.display='block'; mv.style.display='none';
+    cb.style.background='var(--black)'; cb.style.color='var(--white)';
+    mb.style.background='var(--gray5)'; mb.style.color='var(--gray2)';
+  } else {
+    cv.style.display='none'; mv.style.display='block';
+    mb.style.background='var(--black)'; mb.style.color='var(--white)';
+    cb.style.background='var(--gray5)'; cb.style.color='var(--gray2)';
+    if(!_manualRows.length) initManualGrid();
+  }
+}
+
+function initManualGrid(){
+  _manualRows=[];
+  for(var i=0;i<10;i++) _manualRows.push({raw:'',qty:1,prod:null});
+  renderManualGrid();
+}
+
+function addManualRow(){
+  for(var i=0;i<5;i++) _manualRows.push({raw:'',qty:1,prod:null});
+  renderManualGrid();
+}
+
+function renderManualGrid(){
+  var el=document.getElementById('manual-grid');
+  el.innerHTML=_manualRows.map(function(r,i){
+    var stk='';
+    if(r.raw&&r.prod) stk=r.prod.stock>0?'<span style="color:var(--green);font-weight:600;font-size:12px;">'+r.prod.stock+'</span>':'<span style="color:var(--red);font-size:12px;">0</span>';
+    else if(r.raw) stk='<span style="color:var(--gray3);font-size:12px;">—</span>';
+    return '<div style="display:flex;border-bottom:1px solid var(--gray5);position:relative;">'
+      +'<div style="flex:2;position:relative;">'
+        +'<input style="width:100%;border:none;outline:none;padding:9px 10px;font-size:12px;font-family:var(--mono);background:transparent;color:'+(r.prod?'var(--black)':'var(--gray2)')+';" value="'+esc(r.raw)+'" placeholder="SKU..." oninput="onManualInput('+i+',this.value)" onchange="onManualChange('+i+',this.value)"/>'
+        +'<div id="mac-'+i+'" style="position:absolute;top:100%;left:0;right:0;background:var(--white);border:1px solid var(--gray4);border-top:none;z-index:200;display:none;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.08);"></div>'
+      +'</div>'
+      +'<input type="number" min="1" value="'+r.qty+'" style="width:64px;border:none;border-left:1px solid var(--gray5);outline:none;padding:9px 10px;font-size:12px;text-align:center;font-family:var(--sans);background:transparent;" oninput="onManualQty('+i+',this.value)"/>'
+      +'<div style="width:60px;border-left:1px solid var(--gray5);display:flex;align-items:center;justify-content:center;">'+stk+'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function searchSKU(q,n){
+  var qU=q.toUpperCase();
+  return Object.entries(stockMap).filter(function(e){ return e[0].includes(qU); }).slice(0,n).map(function(e){
+    var sku=e[0],s=e[1];
+    var pr=null; for(var k=0;k<productos.length;k++){ if((productos[k].sku||'').toUpperCase()===sku){ pr=productos[k]; break; } }
+    return {sku:sku,des:pr?cleanNombre(pr.nombre):sku,stock:s.stock,precio:s.precio};
+  });
+}
+
+function onManualInput(i,val){
+  var drop=document.getElementById('mac-'+i);
+  if(!val||val.trim().length<2){ drop.style.display='none'; return; }
+  var matches=searchSKU(val.trim(),6);
+  _manualAC[i]=matches;
+  if(!matches.length){ drop.style.display='none'; return; }
+  drop.innerHTML=matches.map(function(p,idx){
+    return '<div style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--gray5);display:flex;gap:8px;align-items:center;font-size:12px;" onmousedown="selectManualAC('+i+','+idx+')">'
+      +'<span style="color:'+(p.stock>0?'var(--green)':'var(--red)')+';font-weight:600;min-width:24px;">'+p.stock+'</span>'
+      +'<span style="font-family:var(--mono);font-size:10px;color:var(--gray2);min-width:80px;">'+esc(p.sku)+'</span>'
+      +'<span style="flex:1;">'+esc(p.des)+'</span>'
+      +'</div>';
+  }).join('');
+  drop.style.display='block';
+}
+
+function selectManualAC(row,idx){
+  var p=(_manualAC[row]||[])[idx]; if(!p) return;
+  _manualRows[row].raw=p.sku; _manualRows[row].prod=p;
+  document.getElementById('mac-'+row).style.display='none';
+  renderManualGrid();
+}
+
+function onManualChange(i,val){
+  _manualRows[i].raw=val.trim();
+  var s=stockMap[val.trim().toUpperCase()];
+  _manualRows[i].prod=s?{sku:val.trim().toUpperCase(),des:val,stock:s.stock,precio:s.precio}:null;
+  renderManualGrid();
+}
+
+function onManualQty(i,val){ _manualRows[i].qty=Math.max(1,parseInt(val)||1); }
+
+async function confirmarManual(){
+  var items=_manualRows.filter(function(r){ return r.raw&&r.prod&&r.prod.stock>0; });
+  if(!items.length){ showToast('Sin productos válidos',true); return; }
+  var nota=document.getElementById('manual-nota-text').value;
+  var grouped={};
+  items.forEach(function(r){ if(!grouped[r.prod.sku]) grouped[r.prod.sku]=r.qty; else grouped[r.prod.sku]+=r.qty; });
+  var btn=document.querySelector('#manual-view button:last-child');
+  btn.disabled=true; btn.textContent='Enviando...';
+  try {
+    var r=await fetch(BACKEND+'/api/pedido',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},authH()),body:JSON.stringify({data:{productos:Object.keys(grouped).map(function(sku){ return {sku:sku,quantity:grouped[sku]}; }),nota:nota}})});
+    var data=await r.json();
+    if(!r.ok) throw new Error(data.error||'Error');
+    _manualRows=[]; initManualGrid();
+    document.getElementById('manual-nota-text').value='';
+    histCargado=false; loadHistorial(); goSection('historial');
+    showToast('¡Pedido enviado a Aviv!');
+  } catch(e){ showToast(e.message,true); }
+  btn.disabled=false; btn.textContent='Confirmar pedido';
+}
+
+// ── CONFIGURACIÓN ────────────────────────────────────────────────
+var _multLocal = null;
+
+function initConfig(){
+  var m = _multLocal || (clientData.multiplicador||3);
+  document.getElementById('mult-display').textContent = m;
+  actualizarMultEjemplo(m);
+  var cn = document.getElementById('config-nombre');
+  if(cn) cn.textContent = clientData.name || '';
+}
+
+function cambiarMult(delta){
+  var cur = parseFloat(document.getElementById('mult-display').textContent)||3;
+  var nuevo = Math.max(1, Math.min(10, Math.round((cur+delta)*10)/10));
+  _multLocal = nuevo;
+  document.getElementById('mult-display').textContent = nuevo;
+  actualizarMultEjemplo(nuevo);
+}
+
+function actualizarMultEjemplo(m){
+  var ejemplo = 100000;
+  var res = document.getElementById('mult-ejemplo');
+  if(res) res.innerHTML = 'Ejemplo: precio Aviv $'+ejemplo.toLocaleString('es-CL')+' → precio sugerido <strong>$'+(ejemplo*m).toLocaleString('es-CL')+'</strong>';
+}
+
+function guardarMult(){
+  var m = parseFloat(document.getElementById('mult-display').textContent)||3;
+  clientData.multiplicador = m;
+  _multLocal = m;
+  // Refrescar vitrina con nuevo multiplicador
+  renderVitrina();
+  showToast('Multiplicador guardado: ×'+m);
 }
 
 // Swipe para navegar entre productos en ficha
